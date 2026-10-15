@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, Text, View } from 'react-native';
+import { Alert, ScrollView, Text, View, Image } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Button, Card, EmptyState, ErrorText, Loading, Page, Pill, Title } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -23,7 +23,7 @@ export default function GroupDetailScreen() {
   const load = useCallback(async () => {
     const [g, m, e, t] = await Promise.all([
       supabase.from('groups').select('*').eq('id', id).single(),
-      supabase.from('group_memberships').select('*, profile:profiles(id,display_name)').eq('group_id', id).order('joined_at'),
+      supabase.from('group_memberships').select('*, profile:profiles(id,display_name,avatar_url)').eq('group_id', id).order('joined_at'),
       supabase.from('events').select('*').eq('group_id', id).order('starts_at').limit(10),
       supabase.from('tasks').select('*').eq('group_id', id).order('created_at', { ascending: false }).limit(10),
     ]);
@@ -58,7 +58,39 @@ export default function GroupDetailScreen() {
     {error ? <ErrorText>{error}</ErrorText> : null}
     <View style={styles.groupHero}><View style={[styles.color, { backgroundColor: group?.color || theme.colors.primary }]} /><View style={{ flex: 1 }}><Title subtitle={group?.description || 'Shared group workspace'}>{group?.name || 'Group'}</Title></View></View>
     <View style={styles.section}><Text style={styles.heading}>People <Text style={styles.count}>{members.length}</Text></Text></View>
-    {members.map(member => <Card key={member.user_id} style={styles.member}><View style={styles.person}><Text style={styles.initial}>{member.profile?.display_name?.[0]?.toUpperCase() || '?'}</Text><View><Text style={styles.personName}>{member.profile?.display_name || 'Group member'}</Text><Text style={styles.personRole}>{member.role}</Text></View></View><Text onPress={() => memberAction(member)} style={styles.more}>{(canManage && member.user_id !== user?.id) || member.user_id === user?.id ? '•••' : ''}</Text></Card>)}
+    {members.map(member => (
+      <Card key={member.user_id} style={styles.member}>
+        <View style={styles.person}>
+          {member.profile?.avatar_url ? (
+            <Image
+              source={{ uri: member.profile.avatar_url }}
+              style={styles.initial}
+            />
+          ) : (
+            <Text style={styles.initial}>
+              {member.profile?.display_name?.[0]?.toUpperCase() || '?'}
+            </Text>
+          )}
+
+          <View>
+            <Text style={styles.personName}>
+              {member.profile?.display_name || 'Group member'}
+            </Text>
+            <Text style={styles.personRole}>{member.role}</Text>
+          </View>
+        </View>
+
+        <Text
+          onPress={() => memberAction(member)}
+          style={styles.more}
+        >
+          {(canManage && member.user_id !== user?.id) ||
+          member.user_id === user?.id
+            ? '•••'
+            : ''}
+        </Text>
+      </Card>
+    ))}
     {canManage ? <Card style={styles.invite}><Text style={styles.heading}>Invite teammates</Text><Text style={styles.muted}>Create a single-use code that expires in 14 days.</Text><Button title={busy ? 'Creating code…' : 'Create invitation code'} onPress={() => void invite()} secondary disabled={busy} />{inviteCode ? <Text selectable style={styles.code}>{inviteCode}</Text> : null}</Card> : null}
     <View style={styles.section}><Text style={styles.heading}>Upcoming calendar</Text><Text onPress={() => router.push('/create-event')} style={styles.link}>＋ Add</Text></View>
     {events.length ? events.map(event => <Card key={event.id} style={styles.item}><Text onPress={() => router.push(`/event/${event.id}`)} style={styles.itemTitle}>{event.title}</Text><Text onPress={() => router.push(`/event/${event.id}`)} style={styles.muted}>{formatDate(event.starts_at)} · {formatTime(event.starts_at)}{event.location ? ` · ${event.location}` : ''}</Text><View style={{ marginTop: 8 }}><Pill>{event.kind}</Pill></View></Card>) : <EmptyState title="No group dates yet" body="Add a meeting, deadline or event so everyone sees it." />}
