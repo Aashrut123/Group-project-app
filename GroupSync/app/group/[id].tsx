@@ -526,7 +526,7 @@ const styles = {
     alignItems: 'center',
     gap: 11,
   },
-  memberAvatar: {
+  initial: {
     width: 44,
     height: 44,
     borderRadius: 22,
