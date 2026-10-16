@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View, Image } from 'react-native';
 import { router } from 'expo-router';
 
 import {
@@ -62,12 +62,18 @@ export default function HomeScreen() {
               </Text>
             </View>
 
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {profile?.display_name?.[0]?.toUpperCase() ||
-                  'G'}
-              </Text>
-            </View>
+            {profile?.avatar_url ? (
+                <Image 
+                  source={{ uri: profile?.avatar_url }}
+                  style={styles.avatarImage}
+                />
+                ) : (
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>
+                      {profile?.display_name?.[0]?.toUpperCase() || 'G'}
+                    </Text>
+                  </View>
+                )}  
           </View>
 
           <View style={styles.hero}>
@@ -240,7 +246,7 @@ const styles = {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 24,
   },
   eyebrow: {
     color: theme.colors.primary,
@@ -326,4 +332,11 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  avatarImage: {
+    width: 42,
+    height: 42, 
+    borderRadius: 15,
+    resizeMode: 'cover',
+    backgroundColor: theme.colors.mint,
+  }
 } as const;
