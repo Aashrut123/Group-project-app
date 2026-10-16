@@ -308,22 +308,23 @@ export default function GroupDetailScreen() {
             <View style={styles.person}>
               {member.profile?.avatar_url ? (
                 <Image
-                  source={{
-                    uri: member.profile.avatar_url,
-                  }}
+                  source={{ uri: member.profile.avatar_url }}
                   style={styles.initial}
+                  onError={() => {
+                    console.log("Failed to load avatar:", member.profile?.avatar_url);
+                  }}
                 />
               ) : (
-                <Text style={styles.initial}>
-                  {member.profile?.display_name?.[0]
-                    ?.toUpperCase() || '?'}
-                </Text>
+                <View style={styles.memberAvatarFallback}>
+                  <Text style={styles.memberAvatarText}>
+                    {member.profile?.display_name?.[0]?.toUpperCase() || '?'}
+                  </Text>
+                </View>
               )}
 
               <View>
                 <Text style={styles.personName}>
-                  {member.profile?.display_name ||
-                    'Group member'}
+                  {member.profile?.display_name || 'UnNamed Group member'}
                 </Text>
 
                 <Text style={styles.personRole}>
@@ -336,8 +337,7 @@ export default function GroupDetailScreen() {
               onPress={() => memberAction(member)}
               style={styles.more}
             >
-              {(canManage &&
-                member.user_id !== user?.id) ||
+              {(canManage && member.user_id !== user?.id) ||
               member.user_id === user?.id
                 ? '•••'
                 : ''}
@@ -526,16 +526,24 @@ const styles = {
     alignItems: 'center',
     gap: 11,
   },
-  initial: {
-    width: 38,
-    height: 38,
-    borderRadius: 13,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    overflow: 'hidden',
+  memberAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: theme.colors.mint
+  },
+  memberAvatarFallback: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: theme.colors.mint,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  memberAvatarText: {
     color: theme.colors.primary,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '800'
   },
   personName: {
     color: theme.colors.ink,
