@@ -330,11 +330,20 @@ export default function TaskDetailScreen() {
         {error ? <ErrorText>{error}</ErrorText> : null}
 
         <Text style={styles.heading}>Status</Text>
+        <Button
+          title={task.status === 'completed' ? 'Mark not finished' : 'Mark finished'}
+          onPress={() => void setStatus(task.status === 'completed' ? 'todo' : 'completed')}
+        />
 
         <View style={styles.row}>
           {(
-            ['todo', 'in_progress', 'blocked', 'completed'] as TaskStatus[]
-          ).map(value => (
+            [
+              ['todo', 'Not started'],
+              ['in_progress', 'In progress'],
+              ['blocked', 'Blocked'],
+              ['completed', 'Finished'],
+            ] as const
+          ).map(([value, name]) => (
             <Text
               key={value}
               onPress={() => void setStatus(value)}
@@ -343,7 +352,7 @@ export default function TaskDetailScreen() {
                 task.status === value && styles.active,
               ]}
             >
-              {value.replace('_', ' ')}
+              {name}
             </Text>
           ))}
         </View>

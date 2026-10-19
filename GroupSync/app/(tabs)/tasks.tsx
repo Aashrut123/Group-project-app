@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import {
@@ -16,7 +16,6 @@ import {
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useWorkspace } from '@/hooks/useWorkspace';
-import { nextTaskStatus } from '@/lib/planner/status';
 import { assigneeLabel, formatDate } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
@@ -82,18 +81,10 @@ export default function TasksScreen() {
     return <Loading />;
   }
 
-  const cycle = async (
-    taskId: string,
-    current: TaskStatus
-  ) => {
-    const next = nextTaskStatus(current);
-
-    const { error: issue } = await supabase
-      .from('tasks')
-      .update({ status: next })
-      .eq('id', taskId);
+  const toggleFinished = async (taskId: string, current: TaskStatus) => {
+    const next = current === 'completed' ? 'todo' : 'completed';
+    const { error: issue } = await supabase.from('tasks').update({ status: next }).eq('id', taskId);
     if (issue) return;
-
     await refresh();
   };
 
@@ -217,14 +208,15 @@ export default function TasksScreen() {
                   </View>
                 </View>
 
-                <Text
-                  onPress={() =>
-                    void cycle(task.id, task.status)
-                  }
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={task.status === 'completed' ? 'Mark not finished' : 'Mark finished'}
+                  onPress={() => void toggleFinished(task.id, task.status)}
                   style={styles.check}
                 >
-                  {task.status === 'completed' ? '✓' : '○'}
-                </Text>
+                  <Text style={styles.checkMark}>{task.status === 'completed' ? '✓' : '○'}</Text>
+                  <Text style={styles.checkLabel}>{task.status === 'completed' ? 'Finished' : 'Finish'}</Text>
+                </Pressable>
               </Card>
             ))
           ) : (
@@ -303,8 +295,17 @@ const styles = {
     marginTop: 10,
   },
   check: {
+    alignItems: 'center',
+    padding: 8,
+  },
+  checkMark: {
     color: theme.colors.primary,
     fontSize: 27,
-    padding: 8,
+    fontWeight: '700',
+  },
+  checkLabel: {
+    color: theme.colors.primary,
+    fontSize: 10,
+    fontWeight: '800',
   },
 } as const;
