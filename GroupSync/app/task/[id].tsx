@@ -15,6 +15,7 @@ import {
 } from '@/components/ui';
 
 import { useAuth } from '@/features/auth/AuthProvider';
+import { updateTaskStatus } from '@/hooks/useWorkspace';
 import { formatDate, personName } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
@@ -184,15 +185,13 @@ export default function TaskDetailScreen() {
   };
 
   const setStatus = async (status: TaskStatus) => {
-    const { error: issue } = await supabase
-      .from('tasks')
-      .update({ status })
-      .eq('id', id);
-
-    if (issue) {
-      setError(issue.message);
-    } else {
+    setError('');
+    try {
+      await updateTaskStatus(String(id), status);
+      setTask((current) => (current ? { ...current, status } : current));
       await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not update the task.');
     }
   };
 
@@ -330,11 +329,12 @@ export default function TaskDetailScreen() {
         {error ? <ErrorText>{error}</ErrorText> : null}
 
         <Text style={styles.heading}>Status</Text>
-        <Button
-          title={task.status === 'completed' ? 'Mark not finished' : 'Mark finished'}
-          onPress={() => void setStatus(task.status === 'completed' ? 'todo' : 'completed')}
-        />
-
+        <View style={styles.finishAction}>
+          <Button
+            title={task.status === 'completed' ? 'Mark not finished' : 'Mark finished'}
+            onPress={() => void setStatus(task.status === 'completed' ? 'todo' : 'completed')}
+          />
+        </View>
         <View style={styles.row}>
           {(
             [
@@ -344,16 +344,12 @@ export default function TaskDetailScreen() {
               ['completed', 'Finished'],
             ] as const
           ).map(([value, name]) => (
-            <Text
+            <Chip
               key={value}
+              label={name}
+              active={task.status === value}
               onPress={() => void setStatus(value)}
-              style={[
-                styles.choice,
-                task.status === value && styles.active,
-              ]}
-            >
-              {name}
-            </Text>
+            />
           ))}
         </View>
 
@@ -490,6 +486,10 @@ const styles = {
     fontWeight: '800',
     marginTop: 20,
     marginBottom: 9,
+  },
+
+  finishAction: {
+    marginBottom: 14,
   },
 
   row: {

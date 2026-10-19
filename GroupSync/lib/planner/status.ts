@@ -11,6 +11,13 @@ export function isOpenStatus(status: string): boolean {
   return status !== 'completed';
 }
 
+export function taskStatusLabel(status: string): string {
+  if (status === 'completed') return 'Finished';
+  if (status === 'in_progress') return 'In progress';
+  if (status === 'blocked') return 'Blocked';
+  return 'Not started';
+}
+
 export function completionPercent(
   tasks: { status: string }[],
   milestones: { completed: boolean }[] = [],

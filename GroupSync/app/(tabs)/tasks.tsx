@@ -15,9 +15,9 @@ import {
   Title,
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { useWorkspace } from '@/hooks/useWorkspace';
+import { updateTaskStatus, useWorkspace } from '@/hooks/useWorkspace';
 import { assigneeLabel, formatDate } from '@/lib/format';
-import { supabase } from '@/lib/supabase';
+import { taskStatusLabel } from '@/lib/planner/status';
 import { theme } from '@/lib/theme';
 import type { TaskPriority, TaskStatus } from '@/types/database';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,10 +30,10 @@ const statuses: TaskStatus[] = [
 ];
 
 const label: Record<TaskStatus, string> = {
-  todo: 'Not started',
-  in_progress: 'In progress',
-  blocked: 'Blocked',
-  completed: 'Completed',
+  todo: taskStatusLabel('todo'),
+  in_progress: taskStatusLabel('in_progress'),
+  blocked: taskStatusLabel('blocked'),
+  completed: taskStatusLabel('completed'),
 };
 
 export default function TasksScreen() {
@@ -83,9 +83,11 @@ export default function TasksScreen() {
 
   const toggleFinished = async (taskId: string, current: TaskStatus) => {
     const next = current === 'completed' ? 'todo' : 'completed';
-    const { error: issue } = await supabase.from('tasks').update({ status: next }).eq('id', taskId);
-    if (issue) return;
-    await refresh();
+    try {
+      await updateTaskStatus(taskId, next);
+    } catch {
+      await refresh();
+    }
   };
 
   return (

@@ -25,7 +25,8 @@ import {
 import { useAuth } from '@/features/auth/AuthProvider';
 import { formatDate, formatTime } from '@/lib/format';
 import { formatDay, parseDay } from '@/lib/planner/dates';
-import { completionPercent } from '@/lib/planner/status';
+import { useWorkspace, updateTaskStatus } from '@/hooks/useWorkspace';
+import { completionPercent, taskStatusLabel } from '@/lib/planner/status';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 import type {
@@ -41,6 +42,7 @@ import type {
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
+  const { tasks: sharedTasks } = useWorkspace();
 
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<Membership[]>([]);
@@ -150,6 +152,11 @@ export default function GroupDetailScreen() {
   if (loading) {
     return <Loading />;
   }
+
+  const projectTasks = tasks.map((task) => {
+    const live = sharedTasks.find((item) => item.id === task.id);
+    return live ? { ...task, status: live.status } : task;
+  });
 
   const myRole = members.find(
     member => member.user_id === user?.id
@@ -330,7 +337,7 @@ export default function GroupDetailScreen() {
         </View>
 
         <Text style={styles.muted}>
-          {completionPercent(tasks, milestones.map((item) => ({ completed: Boolean(item.completed_at) })))}% complete
+          {completionPercent(projectTasks, milestones.map((item) => ({ completed: Boolean(item.completed_at) })))}% complete
           {group?.deadline ? ` · deadline ${formatDate(group.deadline)}` : ''}
           {group?.outcome ? ` · ${group.outcome}` : ''}
         </Text>
@@ -563,8 +570,8 @@ export default function GroupDetailScreen() {
           </Text>
         </View>
 
-        {tasks.length ? (
-          tasks.map(task => (
+        {projectTasks.length ? (
+          projectTasks.map(task => (
             <Card
               key={task.id}
               style={styles.item}
@@ -584,8 +591,18 @@ export default function GroupDetailScreen() {
                 }
                 style={styles.muted}
               >
-                {task.status.replace('_', ' ')} ·{' '}
+                {taskStatusLabel(task.status)} ·{' '}
                 {formatDate(task.due_at)}
+              </Text>
+              <Text
+                onPress={() => {
+                  void updateTaskStatus(task.id, task.status === 'completed' ? 'todo' : 'completed').catch((cause: unknown) => {
+                    setError(cause instanceof Error ? cause.message : 'Could not update the task.');
+                  });
+                }}
+                style={styles.link}
+              >
+                {task.status === 'completed' ? 'Mark not finished' : 'Mark finished'}
               </Text>
             </Card>
           ))

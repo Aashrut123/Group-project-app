@@ -8,7 +8,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { findConflicts } from '@/lib/planner/conflicts';
 import { isStillScheduled } from '@/lib/planner/dates';
-import { completionPercent } from '@/lib/planner/status';
+import { completionPercent, isOpenStatus } from '@/lib/planner/status';
 import { formatDate, formatTime } from '@/lib/format';
 import { theme } from '@/lib/theme';
 
@@ -18,7 +18,7 @@ export default function HomeScreen() {
 
   const activeGroups = groups.filter((group) => group.status !== 'archived');
   const mine = tasks.filter((task) => task.assignments?.some((assignment) => assignment.user_id === user?.id) || task.created_by === user?.id);
-  const openMine = mine.filter((task) => task.status !== 'completed');
+  const openMine = mine.filter((task) => isOpenStatus(task.status));
   const nextTask = [...openMine].sort((a, b) => (a.due_at || '9999').localeCompare(b.due_at || '9999'))[0];
   const overdue = openMine.filter((task) => task.due_at && task.due_at < new Date().toISOString());
   const upcomingEvents = events.filter((event) => isStillScheduled(event.ends_at)).slice(0, 3);
