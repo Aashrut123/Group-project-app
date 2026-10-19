@@ -47,7 +47,7 @@ export async function loadEvents(groupId?: string): Promise<CalendarEvent[]> {
 export async function loadTasks(groupId?: string): Promise<Task[]> {
   let query = supabase
     .from('tasks')
-    .select('*, group:groups(id,name,color), assignments:task_assignments(user_id)')
+    .select('*, group:groups(id,name,color), assignments:task_assignments(user_id, profile:profiles(display_name))')
     .order('created_at', { ascending: false });
   if (groupId) query = query.eq('group_id', groupId);
   const { data, error } = await query;

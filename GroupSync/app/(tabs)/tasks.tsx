@@ -17,7 +17,7 @@ import {
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { nextTaskStatus } from '@/lib/planner/status';
-import { formatDate } from '@/lib/format';
+import { assigneeLabel, formatDate } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 import type { TaskPriority, TaskStatus } from '@/types/database';
@@ -194,7 +194,7 @@ export default function TasksScreen() {
                     }
                     style={styles.meta}
                   >
-                    {task.group?.name || 'Group'} · Due{' '}
+                    {task.group?.name || 'Group'} · {assigneeLabel(task.assignments)} · Due{' '}
                     {formatDate(task.due_at)}
                   </Text>
 

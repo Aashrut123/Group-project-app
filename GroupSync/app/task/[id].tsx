@@ -6,6 +6,7 @@ import { DateField } from '@/components/DateField';
 import {
   Button,
   Card,
+  Chip,
   ErrorText,
   Field,
   Loading,
@@ -14,7 +15,7 @@ import {
 } from '@/components/ui';
 
 import { useAuth } from '@/features/auth/AuthProvider';
-import { formatDate } from '@/lib/format';
+import { formatDate, personName } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 
@@ -42,6 +43,7 @@ export default function TaskDetailScreen() {
   const [actual, setActual] = useState('');
   const [blocked, setBlocked] = useState('');
   const [dependencies, setDependencies] = useState<{ id: string; title: string; status: string }[]>([]);
+  const [members, setMembers] = useState<{ user_id: string; name: string }[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -52,7 +54,7 @@ export default function TaskDetailScreen() {
       supabase
         .from('tasks')
         .select(
-          '*, group:groups(id,name,color), assignments:task_assignments(user_id)'
+          '*, group:groups(id,name,color), assignments:task_assignments(user_id, profile:profiles(display_name))'
         )
         .eq('id', id)
         .single(),
@@ -91,6 +93,18 @@ export default function TaskDetailScreen() {
       setDependencies(parents.error ? [] : (parents.data as { id: string; title: string; status: string }[]) || []);
     } else {
       setDependencies([]);
+    }
+    if (loaded?.group_id) {
+      const memberships = await supabase
+        .from('group_memberships')
+        .select('user_id, profile:profiles(display_name)')
+        .eq('group_id', loaded.group_id);
+      setMembers(
+        (memberships.data || []).map((row) => ({
+          user_id: row.user_id,
+          name: personName(row.profile),
+        })),
+      );
     }
     setLoading(false);
   }, [id]);
@@ -157,6 +171,15 @@ export default function TaskDetailScreen() {
     }).eq('id', id);
     setBusy(false);
     if (issue) setError(issue.message);
+    else await load();
+  };
+
+  const toggleAssignee = async (userId: string) => {
+    const assigned = task.assignments?.some((assignment) => assignment.user_id === userId);
+    const result = assigned
+      ? await supabase.from('task_assignments').delete().eq('task_id', id).eq('user_id', userId)
+      : await supabase.from('task_assignments').insert({ task_id: id, user_id: userId });
+    if (result.error) setError(result.error.message);
     else await load();
   };
 
@@ -325,6 +348,24 @@ export default function TaskDetailScreen() {
           ))}
         </View>
 
+        <Text style={styles.heading}>Assigned to</Text>
+        {members.length ? (
+          <View style={styles.row}>
+            {members.map((member) => (
+              <Chip
+                key={member.user_id}
+                label={member.name}
+                active={task.assignments?.some((assignment) => assignment.user_id === member.user_id)}
+                onPress={() => void toggleAssignee(member.user_id)}
+              />
+            ))}
+          </View>
+        ) : (
+          <Card>
+            <Text style={styles.body}>No teammates are in this project yet.</Text>
+          </Card>
+        )}
+
         <Text style={styles.heading}>Schedule</Text>
         <DateField label="Due" mode="datetime" value={due} onChange={setDue} />
         <Field label="Estimated minutes" value={estimated} onChangeText={setEstimated} keyboardType="number-pad" placeholder="Optional" />
@@ -444,6 +485,7 @@ const styles = {
 
   row: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 7,
   },
 

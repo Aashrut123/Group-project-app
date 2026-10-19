@@ -13,6 +13,7 @@ import {
 } from '@/components/ui';
 
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { personName } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 
@@ -29,7 +30,7 @@ export default function CreateTaskScreen() {
 
   const [groupId, setGroupId] = useState('');
   const [members, setMembers] = useState<Membership[]>([]);
-  const [assignee, setAssignee] = useState('');
+  const [assignees, setAssignees] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [due, setDue] = useState<Date | null>(null);
@@ -91,13 +92,10 @@ export default function CreateTaskScreen() {
       return;
     }
 
-    if (assignee) {
+    if (assignees.length) {
       const { error: assignmentIssue } = await supabase
         .from('task_assignments')
-        .insert({
-          task_id: task.id,
-          user_id: assignee,
-        });
+        .insert(assignees.map((userId) => ({ task_id: task.id, user_id: userId })));
 
       if (assignmentIssue) {
         setError(
@@ -146,7 +144,7 @@ export default function CreateTaskScreen() {
               key={group.id}
               onPress={() => {
                 setGroupId(group.id);
-                setAssignee('');
+                setAssignees([]);
               }}
               style={[
                 styles.choice,
@@ -201,15 +199,16 @@ export default function CreateTaskScreen() {
         </Card>
 
         <Text style={styles.label}>
-          Assign to a group member
+          Assign to teammates
         </Text>
+        <Text style={styles.hint}>Select everyone sharing this task. Leave them all off to keep it unassigned.</Text>
 
         <Card style={styles.choices}>
           <Text
-            onPress={() => setAssignee('')}
+            onPress={() => setAssignees([])}
             style={[
               styles.choice,
-              !assignee && styles.active,
+              assignees.length === 0 && styles.active,
             ]}
           >
             Unassigned
@@ -218,13 +217,13 @@ export default function CreateTaskScreen() {
           {members.map(member => (
             <Text
               key={member.user_id}
-              onPress={() => setAssignee(member.user_id)}
+              onPress={() => setAssignees((current) => current.includes(member.user_id) ? current.filter((id) => id !== member.user_id) : [...current, member.user_id])}
               style={[
                 styles.choice,
-                assignee === member.user_id && styles.active,
+                assignees.includes(member.user_id) && styles.active,
               ]}
             >
-              {member.profile?.display_name || member.role}
+              {personName(member.profile, member.role)}
             </Text>
           ))}
         </Card>
@@ -256,6 +255,13 @@ const styles = {
     fontWeight: '700',
     marginTop: 4,
     marginBottom: 4,
+  },
+
+  hint: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 8,
   },
 
   choices: {

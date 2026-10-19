@@ -16,3 +16,20 @@ export function dateInputValue(date = new Date()): string {
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
 }
+
+export function personName(profile: unknown, fallback = 'Teammate'): string {
+  const row = Array.isArray(profile) ? profile[0] : profile;
+  if (row && typeof row === 'object' && 'display_name' in row) {
+    const name = (row as { display_name?: unknown }).display_name;
+    if (typeof name === 'string' && name.trim()) return name.trim();
+  }
+  return fallback;
+}
+
+export function assigneeLabel(assignments: { user_id: string; profile?: unknown }[] | undefined): string {
+  if (!assignments?.length) return 'Unassigned';
+  const names = assignments.map((row) => personName(row.profile, '')).filter(Boolean);
+  if (!names.length) return `${assignments.length} assigned`;
+  if (names.length <= 2) return names.join(', ');
+  return `${names.slice(0, 2).join(', ')} +${names.length - 2}`;
+}
