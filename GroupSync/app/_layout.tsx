@@ -72,6 +72,8 @@ export default function RootLayout() {
             title: 'Project',
           }}
         />
+        <Stack.Screen name="event/[id]" options={{ headerShown: true, title: 'Calendar item' }} />
+        <Stack.Screen name="task/[id]" options={{ headerShown: true, title: 'Task' }} />
         <Stack.Screen name="plan" options={{ presentation: 'modal', headerShown: true, title: 'Plan project' }} />
         <Stack.Screen name="availability" options={{ headerShown: true, title: 'Availability' }} />
         <Stack.Screen name="progress" options={{ presentation: 'modal', headerShown: true, title: 'Progress log' }} />

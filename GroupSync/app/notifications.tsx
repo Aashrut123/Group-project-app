@@ -19,8 +19,8 @@ export default function NotificationsScreen() {
       if (issue) setError(issue.message);
       else await refresh();
     }
-    if (item.href.startsWith('/task/') || item.href.startsWith('/group/')) {
-      router.push(item.href as '/task/[id]' | '/group/[id]');
+    if (item.href.startsWith('/task/') || item.href.startsWith('/group/') || item.href.startsWith('/event/')) {
+      router.push(item.href as '/task/[id]' | '/group/[id]' | '/event/[id]');
     }
   };
 
@@ -44,7 +44,7 @@ export default function NotificationsScreen() {
             <Text style={styles.meta}>{formatDate(item.created_at)}{item.read_at ? '' : ' · New'}</Text>
           </Card>
         )) : (
-          <EmptyState title="No notices yet" body="Assignments, progress logs, and meetings will show up here after the latest database migration is applied." />
+          <EmptyState title="No notices yet" body="Assignments, progress logs, and new meetings will show up here." />
         )}
         {notifications.some((item) => !item.read_at) ? <Button title="Mark all read" onPress={() => void markAll()} secondary /> : null}
       </ScrollView>

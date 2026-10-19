@@ -53,6 +53,30 @@ export interface CalendarEvent {
   group?: Group;
 }
 
+export type AttendeeResponse = 'invited' | 'accepted' | 'declined';
+
+export interface Meeting {
+  id: string;
+  group_id: string;
+  event_id: string | null;
+  created_by: string;
+  title: string;
+  description: string;
+  agenda: string;
+  starts_at: string;
+  ends_at: string;
+  location: string;
+  notes: string;
+  action_items: string;
+}
+
+export interface MeetingAttendee {
+  meeting_id: string;
+  user_id: string;
+  response: AttendeeResponse;
+  profile?: Pick<Profile, 'display_name'>;
+}
+
 export interface TaskAssignment {
   user_id: string;
   profile?: Profile;
