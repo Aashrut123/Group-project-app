@@ -1,4 +1,2 @@
-import {StyleSheet, Text, View } from 'react-native'
-import React from 'react'
-
-const Profile = () =
+// The profile screen lives in app/(tabs)/profile.tsx.
+export {};

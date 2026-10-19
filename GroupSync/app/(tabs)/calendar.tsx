@@ -13,13 +13,16 @@ import {
   Pill,
   Title,
 } from '@/components/ui';
+import { useAuth } from '@/features/auth/AuthProvider';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { findConflicts } from '@/lib/planner/conflicts';
 import { formatDate, formatTime } from '@/lib/format';
 import { theme } from '@/lib/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function CalendarScreen() {
-  const { groups, events, loading, error } = useWorkspace();
+  const { user } = useAuth();
+  const { groups, events, tasks, unavailable, loading, error } = useWorkspace();
 
   const [selected, setSelected] = useState<string | null>(null);
   const [view, setView] = useState<'month' | 'week' | 'agenda'>('month');
@@ -79,6 +82,29 @@ export default function CalendarScreen() {
       sameDay(new Date(event.starts_at), day)
     );
 
+  const conflicts = useMemo(() => findConflicts([
+    ...filtered.map((event) => ({
+      id: event.id,
+      title: event.title,
+      start: event.starts_at,
+      end: event.ends_at,
+      kind: event.kind === 'deadline' ? 'deadline' as const : event.kind === 'meeting' ? 'meeting' as const : 'event' as const,
+    })),
+    ...unavailable.filter((period) => period.user_id === user?.id).map((period) => ({
+      id: period.id,
+      title: period.reason || 'Unavailable',
+      start: new Date(`${period.starts_on}T00:00:00`).toISOString(),
+      end: new Date(new Date(`${period.ends_on}T00:00:00`).getTime() + 86_400_000).toISOString(),
+      kind: 'unavailable' as const,
+    })),
+  ]), [filtered, unavailable, user?.id]);
+
+  const deadlines = useMemo(() => {
+    const open = tasks.filter((task) => task.status !== 'completed' && task.due_at && (!selected || task.group_id === selected));
+    if (view === 'agenda') return open;
+    return open.filter((task) => task.due_at && sameDay(new Date(task.due_at), selectedDay));
+  }, [tasks, selected, selectedDay, view]);
+
   const visible = useMemo(() => {
     if (view === 'agenda') {
       return filtered;
@@ -127,6 +153,17 @@ export default function CalendarScreen() {
           </View>
 
           {error ? <ErrorText>{error}</ErrorText> : null}
+
+          {conflicts.length ? (
+            <Card>
+              <Text style={styles.dayLabel}>CONFLICTS</Text>
+              {conflicts.slice(0, 3).map((conflict) => (
+                <Text key={`${conflict.a}-${conflict.b}`} style={styles.eventMeta}>
+                  {conflict.a} overlaps {conflict.b}. {conflict.reason}
+                </Text>
+              ))}
+            </Card>
+          ) : null}
 
           <Card style={styles.month}>
             <View style={styles.monthTop}>
@@ -280,6 +317,16 @@ export default function CalendarScreen() {
               </Text>
             ))}
           </ScrollView>
+
+          {deadlines.map((task) => (
+            <Card key={`deadline-${task.id}`} style={styles.event}>
+              <View style={{ flex: 1 }}>
+                <Text onPress={() => router.push(`/task/${task.id}`)} style={styles.eventTitle}>{task.title}</Text>
+                <Text style={styles.eventMeta}>Task deadline · {task.group?.name || 'Project'} · {formatDate(task.due_at)}</Text>
+              </View>
+              <Pill>deadline</Pill>
+            </Card>
+          ))}
 
           <Text style={styles.dayLabel}>
             {view === 'agenda'

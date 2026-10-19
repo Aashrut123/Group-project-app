@@ -1,11 +1,17 @@
 export type GroupRole = 'owner' | 'admin' | 'member';
 export type EventKind = 'event' | 'meeting' | 'deadline';
-export type TaskStatus = 'todo' | 'in_progress' | 'completed';
+export type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'completed';
 export type TaskPriority = 'low' | 'medium' | 'high';
+export type ProjectStatus = 'active' | 'paused' | 'completed' | 'archived';
+export type TaskOrigin = 'manual' | 'ai' | 'fallback';
 
 export interface Profile {
   id: string;
   display_name: string;
+  avatar_url?: string | null;
+  skills?: string;
+  interests?: string;
+  timezone?: string;
   created_at: string;
   updated_at: string;
 }
@@ -17,6 +23,12 @@ export interface Group {
   color: string;
   created_by: string;
   created_at: string;
+  outcome?: string;
+  starts_on?: string | null;
+  deadline?: string | null;
+  status?: ProjectStatus;
+  priority?: TaskPriority;
+  archived_at?: string | null;
 }
 
 export interface Membership {
@@ -41,6 +53,11 @@ export interface CalendarEvent {
   group?: Group;
 }
 
+export interface TaskAssignment {
+  user_id: string;
+  profile?: Profile;
+}
+
 export interface Task {
   id: string;
   group_id: string;
@@ -48,11 +65,17 @@ export interface Task {
   title: string;
   description: string;
   due_at: string | null;
+  starts_at?: string | null;
   priority: TaskPriority;
   status: TaskStatus;
   created_at: string;
+  estimated_minutes?: number | null;
+  actual_minutes?: number | null;
+  origin?: TaskOrigin;
+  blocked_reason?: string;
+  plan_id?: string | null;
   group?: Group;
-  assignments?: { user_id: string; profile?: Profile }[];
+  assignments?: TaskAssignment[];
 }
 
 export interface Requirement {
@@ -72,4 +95,61 @@ export interface Comment {
   body: string;
   created_at: string;
   profile?: Profile;
+}
+
+export interface Milestone {
+  id: string;
+  group_id: string;
+  title: string;
+  description: string;
+  due_on: string | null;
+  completed_at: string | null;
+  created_by: string;
+}
+
+export interface ProgressLog {
+  id: string;
+  group_id: string;
+  user_id: string;
+  log_date: string;
+  accomplishments: string;
+  next_steps: string;
+  blockers: string;
+  task_id: string | null;
+  created_at: string;
+  profile?: Profile;
+  group?: Pick<Group, 'id' | 'name'>;
+}
+
+export interface AvailabilityWindow {
+  id: string;
+  user_id: string;
+  weekday: number;
+  start_minute: number;
+  end_minute: number;
+}
+
+export interface UnavailablePeriod {
+  id: string;
+  user_id: string;
+  starts_on: string;
+  ends_on: string;
+  reason: string;
+}
+
+export interface AppNotification {
+  id: string;
+  user_id: string;
+  group_id: string | null;
+  kind: string;
+  title: string;
+  body: string;
+  href: string;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface TaskDependency {
+  task_id: string;
+  depends_on: string;
 }

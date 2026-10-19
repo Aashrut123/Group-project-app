@@ -1,8 +1,20 @@
-import { Stack } from 'expo-router';
+import { Stack, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { Text, View } from 'react-native';
 
+import { Button } from '@/components/ui';
 import { AuthProvider } from '@/features/auth/AuthProvider';
 import { theme } from '@/lib/theme';
+
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', padding: 24, backgroundColor: theme.colors.background }}>
+      <Text style={{ color: theme.colors.ink, fontSize: 22, fontWeight: '800' }}>Something broke on this screen</Text>
+      <Text style={{ color: theme.colors.muted, marginTop: 8, marginBottom: 12 }}>{error.message}</Text>
+      <Button title="Try again" onPress={retry} />
+    </View>
+  );
+}
 
 export default function RootLayout() {
   return (
@@ -57,9 +69,14 @@ export default function RootLayout() {
           name="group/[id]"
           options={{
             headerShown: true,
-            title: 'Group',
+            title: 'Project',
           }}
         />
+        <Stack.Screen name="plan" options={{ presentation: 'modal', headerShown: true, title: 'Plan project' }} />
+        <Stack.Screen name="availability" options={{ headerShown: true, title: 'Availability' }} />
+        <Stack.Screen name="progress" options={{ presentation: 'modal', headerShown: true, title: 'Progress log' }} />
+        <Stack.Screen name="notifications" options={{ headerShown: true, title: 'Notices' }} />
+        <Stack.Screen name="reschedule" options={{ presentation: 'modal', headerShown: true, title: 'Reschedule' }} />
       </Stack>
     </AuthProvider>
   );

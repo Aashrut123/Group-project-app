@@ -7,6 +7,7 @@ import {
   Card,
   EmptyState,
   ErrorText,
+  Field,
   Loading,
   Page,
   Pill,
@@ -14,6 +15,7 @@ import {
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { nextTaskStatus } from '@/lib/planner/status';
 import { formatDate } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
@@ -23,12 +25,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const statuses: TaskStatus[] = [
   'todo',
   'in_progress',
+  'blocked',
   'completed',
 ];
 
 const label: Record<TaskStatus, string> = {
-  todo: 'To do',
+  todo: 'Not started',
   in_progress: 'In progress',
+  blocked: 'Blocked',
   completed: 'Completed',
 };
 
@@ -42,6 +46,7 @@ export default function TasksScreen() {
   const [scope, setScope] = useState<'mine' | 'groups'>(
     'mine'
   );
+  const [query, setQuery] = useState('');
 
   const mine = useMemo(
     () =>
@@ -60,6 +65,10 @@ export default function TasksScreen() {
     .filter(
       task => filter === 'all' || task.status === filter
     )
+    .filter((task) => {
+      const haystack = `${task.title} ${task.description}`.toLowerCase();
+      return haystack.includes(query.trim().toLowerCase());
+    })
     .sort((a, b) =>
       (a.due_at || '9999').localeCompare(b.due_at || '9999')
     );
@@ -72,15 +81,13 @@ export default function TasksScreen() {
     taskId: string,
     current: TaskStatus
   ) => {
-    const next =
-      statuses[
-        (statuses.indexOf(current) + 1) % statuses.length
-      ];
+    const next = nextTaskStatus(current);
 
-    await supabase
+    const { error: issue } = await supabase
       .from('tasks')
       .update({ status: next })
       .eq('id', taskId);
+    if (issue) return;
 
     await refresh();
   };
@@ -145,6 +152,8 @@ export default function TasksScreen() {
               </Text>
             ))}
           </ScrollView>
+
+          <Field label="Search" value={query} onChangeText={setQuery} placeholder="Search titles and descriptions" autoCapitalize="none" />
 
           {error ? <ErrorText>{error}</ErrorText> : null}
 

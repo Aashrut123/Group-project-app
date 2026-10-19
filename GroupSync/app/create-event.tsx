@@ -30,6 +30,7 @@ export default function CreateEventScreen() {
   const [endsAt, setEndsAt] = useState('');
   const [location, setLocation] = useState('');
   const [kind, setKind] = useState<EventKind>('event');
+  const [agenda, setAgenda] = useState('');
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -76,25 +77,46 @@ export default function CreateEventScreen() {
       item => item.id === groupId
     );
 
-    const { error: issue } = await supabase
+    const { data: event, error: issue } = await supabase
       .from('events')
       .insert({
         group_id: groupId,
         title: title.trim(),
-        description: description.trim(),
+        description: kind === 'meeting' && agenda.trim() ? agenda.trim() : description.trim(),
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
         location: location.trim(),
         kind,
         color: group?.color || theme.colors.primary,
-      });
+      })
+      .select('id')
+      .single();
 
-    setBusy(false);
-
-    if (issue) {
-      setError(issue.message);
+    if (issue || !event) {
+      setBusy(false);
+      setError(issue?.message || 'Could not add the calendar item.');
       return;
     }
+
+    if (kind === 'meeting') {
+      const meeting = await supabase.from('meetings').insert({
+        group_id: groupId,
+        event_id: event.id,
+        title: title.trim(),
+        description: description.trim(),
+        agenda: agenda.trim(),
+        starts_at: start.toISOString(),
+        ends_at: end.toISOString(),
+        location: location.trim(),
+      });
+      if (meeting.error) {
+        setBusy(false);
+        setError(`The calendar item was saved, but the meeting record failed: ${meeting.error.message}`);
+        return;
+      }
+    }
+
+    setBusy(false);
 
     await refresh();
 
@@ -174,6 +196,16 @@ export default function CreateEventScreen() {
           onChangeText={setEndsAt}
           placeholder="YYYY-MM-DDTHH:mm (defaults to one hour later)"
         />
+
+        {kind === 'meeting' ? (
+          <Field
+            label="Agenda"
+            value={agenda}
+            onChangeText={setAgenda}
+            placeholder="What should the group decide?"
+            multiline
+          />
+        ) : null}
 
         <Field
           label="Location or video link"

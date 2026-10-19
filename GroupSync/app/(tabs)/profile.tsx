@@ -21,6 +21,8 @@ export default function ProfileScreen() {
   const { user, profile, loading, refreshProfile } = useAuth();
 
   const [name, setName] = useState(profile?.display_name || '');
+  const [skills, setSkills] = useState(profile?.skills || '');
+  const [interests, setInterests] = useState(profile?.interests || '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | undefined>(
@@ -38,7 +40,11 @@ export default function ProfileScreen() {
 
       const { error: issue } = await supabase
         .from('profiles')
-        .update({ display_name: name.trim() })
+        .update({
+          display_name: name.trim(),
+          skills: skills.trim(),
+          interests: interests.trim(),
+        })
         .eq('id', user.id);
 
       if (issue) throw issue;
@@ -175,6 +181,20 @@ export default function ProfileScreen() {
             autoCapitalize="words"
           />
 
+          <Field
+            label="Skills"
+            value={skills}
+            onChangeText={setSkills}
+            placeholder="Wiring, writing, research"
+          />
+
+          <Field
+            label="Interests"
+            value={interests}
+            onChangeText={setInterests}
+            placeholder="Robotics, student government"
+          />
+
           {error ? <ErrorText>{error}</ErrorText> : null}
 
           <Button
@@ -182,6 +202,9 @@ export default function ProfileScreen() {
             onPress={() => void save()}
             disabled={busy}
           />
+
+          <Button title="Availability" onPress={() => router.push('/availability')} secondary />
+          <Button title="Notices" onPress={() => router.push('/notifications')} secondary />
 
           <Card style={{ marginTop: 20 }}>
             <Text style={styles.section}>About GroupSync</Text>

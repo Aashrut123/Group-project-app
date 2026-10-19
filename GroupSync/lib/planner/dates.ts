@@ -1,0 +1,48 @@
+/** Calendar dates as local YYYY-MM-DD values, independent of time zones. */
+
+export function parseDay(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+  return date;
+}
+
+export function formatDay(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+export function addDays(date: Date, days: number): Date {
+  const next = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+export function daySpan(start: Date, end: Date): number {
+  const ms = end.getTime() - start.getTime();
+  return Math.round(ms / 86_400_000);
+}
+
+export function eachDay(start: Date, end: Date): Date[] {
+  const days: Date[] = [];
+  if (end < start) return days;
+  for (let cursor = start; cursor <= end; cursor = addDays(cursor, 1)) {
+    days.push(cursor);
+  }
+  return days;
+}
+
+export function todayDay(now = new Date()): string {
+  return formatDay(now);
+}
