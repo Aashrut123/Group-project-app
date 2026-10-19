@@ -36,9 +36,8 @@ export default function CalendarScreen() {
 
   const filtered = useMemo(
     () =>
-      selected
-        ? events.filter(event => event.group_id === selected)
-        : events,
+      (selected ? events.filter(event => event.group_id === selected) : events)
+        .filter(event => isStillScheduled(event.ends_at)),
     [events, selected]
   );
 
@@ -110,7 +109,7 @@ export default function CalendarScreen() {
 
   const visible = useMemo(() => {
     if (view === 'agenda') {
-      return filtered.filter((event) => isStillScheduled(event.ends_at));
+      return filtered;
     }
 
     return filtered.filter(event => overlapsLocalDay(event.starts_at, event.ends_at, selectedDay));
