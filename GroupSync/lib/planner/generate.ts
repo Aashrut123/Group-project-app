@@ -3,6 +3,8 @@ import type { GeneratedPlan, PlannerInput } from './types';
 import { parseGeneratedPlan, validatePlannerInput } from './validate';
 
 export interface GenerateOptions {
+  /** Remote AI stays off until this is set. The built-in planner is used otherwise. */
+  useAi?: boolean;
   supabaseUrl?: string;
   accessToken?: string;
   apiKey?: string;
@@ -17,6 +19,11 @@ export async function generatePlan(input: PlannerInput, options: GenerateOptions
     const plan = buildFallbackPlan(validated.value);
     return { ...plan, notices: [notice, ...plan.notices] };
   };
+
+  if (!options.useAi) {
+    const plan = buildFallbackPlan(validated.value);
+    return { ...plan, notices: ['This schedule uses the built-in planner. Review it before saving.'] };
+  }
 
   if (!options.supabaseUrl || !options.accessToken) {
     return fallback('No signed-in AI endpoint was available, so the built-in planner created this schedule.');

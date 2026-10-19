@@ -452,7 +452,7 @@ export default function GroupDetailScreen() {
         {section === 'overview' ? (
           <Card>
             <Text style={styles.heading}>Plan and adjust</Text>
-            <Button title="Generate a plan" onPress={() => router.push({ pathname: '/plan', params: { groupId: id } })} />
+            <Button title="Build a plan" onPress={() => router.push({ pathname: '/plan', params: { groupId: id } })} />
             <Button title="Propose a reschedule" onPress={() => router.push({ pathname: '/reschedule', params: { groupId: id } })} secondary />
             <Button title="Post a progress log" onPress={() => router.push({ pathname: '/progress', params: { groupId: id } })} secondary />
             {myRole === 'owner' ? (

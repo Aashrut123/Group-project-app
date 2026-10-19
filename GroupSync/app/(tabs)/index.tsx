@@ -92,7 +92,7 @@ export default function HomeScreen() {
               </Text>
               <View style={styles.actions}>
                 {nextTask ? <Button title="Open task" onPress={() => router.push(`/task/${nextTask.id}`)} /> : null}
-                <Button title="Plan with AI" onPress={() => router.push({ pathname: '/plan', params: { groupId: activeGroups[0]?.id } })} secondary />
+                <Button title="Build a plan" onPress={() => router.push({ pathname: '/plan', params: { groupId: activeGroups[0]?.id } })} secondary />
               </View>
             </Card>
           )}

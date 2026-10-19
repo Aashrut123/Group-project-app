@@ -96,6 +96,7 @@ export default function PlanScreen() {
           })),
         },
         {
+          useAi: process.env.EXPO_PUBLIC_AI_ENABLED === 'true',
           supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
           accessToken: session.data.session?.access_token,
           apiKey: isSupabaseConfigured ? process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY : undefined,
@@ -171,7 +172,7 @@ export default function PlanScreen() {
         <Field label="Constraints and blockers" value={constraints} onChangeText={setConstraints} multiline placeholder="Exams, parts on order, skills the team does not have" />
         <Field label="Milestones, one per line" value={milestones} onChangeText={setMilestones} multiline placeholder={'Prototype chassis | 2026-11-10\nDemo video'} />
         {error ? <ErrorText>{error}</ErrorText> : null}
-        <Button title={busy ? 'Working…' : 'Generate plan'} onPress={() => void build()} disabled={busy} />
+        <Button title={busy ? 'Working…' : 'Build plan'} onPress={() => void build()} disabled={busy} />
 
         {plan ? (
           <View>
