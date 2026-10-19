@@ -1,7 +1,7 @@
 
-import React, { useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
 
 import {
   Button,
@@ -16,13 +16,18 @@ import {
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { findConflicts } from '@/lib/planner/conflicts';
+import { overlapsLocalDay } from '@/lib/planner/dates';
 import { formatDate, formatTime } from '@/lib/format';
 import { theme } from '@/lib/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function CalendarScreen() {
   const { user } = useAuth();
-  const { groups, events, tasks, unavailable, loading, error } = useWorkspace();
+  const { groups, events, tasks, unavailable, loading, error, refresh } = useWorkspace();
+
+  useFocusEffect(useCallback(() => {
+    void refresh();
+  }, [refresh]));
 
   const [selected, setSelected] = useState<string | null>(null);
   const [view, setView] = useState<'month' | 'week' | 'agenda'>('month');
@@ -78,9 +83,7 @@ export default function CalendarScreen() {
     a.getDate() === b.getDate();
 
   const hasEvent = (day: Date) =>
-    filtered.some(event =>
-      sameDay(new Date(event.starts_at), day)
-    );
+    filtered.some(event => overlapsLocalDay(event.starts_at, event.ends_at, day));
 
   const conflicts = useMemo(() => findConflicts([
     ...filtered.map((event) => ({
@@ -110,9 +113,7 @@ export default function CalendarScreen() {
       return filtered;
     }
 
-    return filtered.filter(event =>
-      sameDay(new Date(event.starts_at), selectedDay)
-    );
+    return filtered.filter(event => overlapsLocalDay(event.starts_at, event.ends_at, selectedDay));
   }, [filtered, selectedDay, view]);
 
   const moveDate = (direction: number) => {
@@ -232,61 +233,80 @@ export default function CalendarScreen() {
                       anchor.getMonth(),
                       day
                     );
+                    const chosen = valid && sameDay(date, selectedDay);
 
                     return (
-                      <Text
+                      <Pressable
                         key={index}
+                        accessibilityRole="button"
+                        accessibilityLabel={valid ? date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : undefined}
+                        disabled={!valid}
                         onPress={() => {
-                          if (valid) {
-                            setSelectedDay(date);
-                            setAnchor(date);
-                          }
+                          setSelectedDay(date);
+                          setAnchor(date);
                         }}
                         style={[
                           styles.day,
-                          valid &&
-                            sameDay(date, selectedDay) &&
-                            styles.daySelected,
+                          chosen && styles.daySelected,
                           !valid && styles.dayBlank,
                         ]}
                       >
-                        {valid
-                          ? `${day}${hasEvent(date) ? ' •' : ''}`
-                          : ''}
-                      </Text>
+                        <Text style={[styles.dayText, chosen && styles.dayTextSelected]}>
+                          {valid ? `${day}${hasEvent(date) ? ' •' : ''}` : ''}
+                        </Text>
+                      </Pressable>
                     );
                   })}
                 </View>
               </>
             ) : view === 'week' ? (
               <View style={styles.grid}>
-                {weekDays.map((day, index) => (
-                  <Text
-                    key={index}
-                    onPress={() => {
-                      setSelectedDay(day);
-                      setAnchor(day);
-                    }}
-                    style={[
-                      styles.weekDay,
-                      sameDay(day, selectedDay) &&
-                        styles.daySelected,
-                    ]}
-                  >
-                    {day.toLocaleDateString(undefined, {
-                      weekday: 'short',
-                    })}
-                    {'\n'}
-                    {day.getDate()}
-                    {hasEvent(day) ? ' •' : ''}
-                  </Text>
-                ))}
+                {weekDays.map((day, index) => {
+                  const chosen = sameDay(day, selectedDay);
+                  return (
+                    <Pressable
+                      key={index}
+                      accessibilityRole="button"
+                      onPress={() => {
+                        setSelectedDay(day);
+                        setAnchor(day);
+                      }}
+                      style={[styles.weekDay, chosen && styles.daySelected]}
+                    >
+                      <Text style={[styles.dayText, chosen && styles.dayTextSelected]}>
+                        {day.toLocaleDateString(undefined, { weekday: 'short' })}
+                        {'\n'}
+                        {day.getDate()}
+                        {hasEvent(day) ? ' •' : ''}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             ) : (
               <Text style={styles.monthHint}>
                 Upcoming events across all of your groups
               </Text>
             )}
+
+            {view !== 'agenda' ? (
+              <View style={styles.dayPreview}>
+                <Text style={styles.monthHint}>
+                  {selectedDay.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                </Text>
+                {visible.length ? visible.map((event) => (
+                  <Text
+                    key={event.id}
+                    onPress={() => router.push(`/event/${event.id}`)}
+                    style={styles.previewItem}
+                  >
+                    {formatTime(event.starts_at)} · {event.title}
+                  </Text>
+                )) : (
+                  <Text style={styles.monthHint}>Nothing scheduled on this day.</Text>
+                )}
+              </View>
+            ) : null}
           </Card>
 
           <ScrollView
@@ -401,8 +421,8 @@ export default function CalendarScreen() {
             ))
           ) : (
             <EmptyState
-              title="Your calendar is open"
-              body="Add a group event, meeting or deadline to start building your shared calendar."
+              title="Nothing on this day"
+              body="Meetings and deadlines that fall on the selected day show up here. Switch to Agenda to see everything coming up."
             />
           )}
 
@@ -485,31 +505,41 @@ const styles = {
   },
   day: {
     width: '14.285%',
-    textAlign: 'center',
-    textAlignVertical: 'center',
     height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+  },
+  dayText: {
     color: 'white',
     fontSize: 12,
     fontWeight: '700',
-    borderRadius: 18,
-    overflow: 'hidden',
+    textAlign: 'center',
+  },
+  dayTextSelected: {
+    color: theme.colors.ink,
   },
   dayBlank: {
-    color: 'transparent',
+    opacity: 0,
   },
   daySelected: {
     backgroundColor: theme.colors.gold,
-    color: theme.colors.ink,
+  },
+  dayPreview: {
+    marginTop: 8,
+    gap: 4,
+  },
+  previewItem: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: '700',
+    paddingVertical: 2,
   },
   weekDay: {
     flex: 1,
-    textAlign: 'center',
-    color: 'white',
-    fontSize: 10,
-    lineHeight: 18,
+    alignItems: 'center',
     paddingVertical: 7,
     borderRadius: 12,
-    overflow: 'hidden',
   },
   filters: {
     gap: 8,

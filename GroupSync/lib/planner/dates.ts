@@ -47,6 +47,16 @@ export function todayDay(now = new Date()): string {
   return formatDay(now);
 }
 
+/** True when the event covers any part of the local calendar day. */
+export function overlapsLocalDay(startsAt: string, endsAt: string, day: Date): boolean {
+  const start = new Date(startsAt);
+  const end = new Date(endsAt);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false;
+  const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+  const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
+  return start < dayEnd && end > dayStart;
+}
+
 /** Local clock time on a calendar day. The returned Date keeps that hour in the device time zone. */
 export function atLocalTime(day: string, hour: number, minute = 0): Date | null {
   const date = parseDay(day);
