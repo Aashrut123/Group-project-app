@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import {
   Button,
   Card,
+  Chip,
   EmptyState,
   ErrorText,
   Field,
@@ -19,7 +20,7 @@ import { nextTaskStatus } from '@/lib/planner/status';
 import { formatDate } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
-import type { TaskStatus } from '@/types/database';
+import type { TaskPriority, TaskStatus } from '@/types/database';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const statuses: TaskStatus[] = [
@@ -38,11 +39,13 @@ const label: Record<TaskStatus, string> = {
 
 export default function TasksScreen() {
   const { user } = useAuth();
-  const { tasks, loading, error, refresh } = useWorkspace();
+  const { groups, tasks, loading, error, refresh } = useWorkspace();
 
   const [filter, setFilter] = useState<'all' | TaskStatus>(
     'all'
   );
+  const [priority, setPriority] = useState<'all' | TaskPriority>('all');
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [scope, setScope] = useState<'mine' | 'groups'>(
     'mine'
   );
@@ -65,6 +68,8 @@ export default function TasksScreen() {
     .filter(
       task => filter === 'all' || task.status === filter
     )
+    .filter((task) => priority === 'all' || task.priority === priority)
+    .filter((task) => !projectId || task.group_id === projectId)
     .filter((task) => {
       const haystack = `${task.title} ${task.description}`.toLowerCase();
       return haystack.includes(query.trim().toLowerCase());
@@ -154,6 +159,16 @@ export default function TasksScreen() {
           </ScrollView>
 
           <Field label="Search" value={query} onChangeText={setQuery} placeholder="Search titles and descriptions" autoCapitalize="none" />
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+            {(['all', 'high', 'medium', 'low'] as const).map((value) => (
+              <Chip key={value} label={value === 'all' ? 'Any priority' : value} active={priority === value} onPress={() => setPriority(value)} />
+            ))}
+            <Chip label="All projects" active={!projectId} onPress={() => setProjectId(null)} />
+            {groups.map((group) => (
+              <Chip key={group.id} label={group.name} active={projectId === group.id} onPress={() => setProjectId(group.id)} />
+            ))}
+          </ScrollView>
 
           {error ? <ErrorText>{error}</ErrorText> : null}
 

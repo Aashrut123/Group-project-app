@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { findConflicts, overloadedDays } from './conflicts.ts';
+import { atLocalTime, formatDay } from './dates.ts';
 import { buildFallbackPlan } from './fallback.ts';
 import { canPromoteMember, canRemoveMember } from './permissions.ts';
 import { acceptedChanges, proposeReschedule } from './reschedule.ts';
@@ -31,6 +32,16 @@ const input = (extra: Partial<PlannerInput> = {}): PlannerInput => ({
   members: [member('a', 'Anish', { skills: 'chassis wiring' }), member('b', 'Aashrut', { skills: 'notebook writing' })],
   existingTasks: [{ title: 'Order parts', status: 'completed' }],
   ...extra,
+});
+
+test('local due times stay on the chosen calendar day', () => {
+  const due = atLocalTime('2026-11-03', 17, 30);
+  assert.ok(due);
+  assert.equal(formatDay(due), '2026-11-03');
+  assert.equal(due.getHours(), 17);
+  assert.equal(due.getMinutes(), 30);
+  assert.equal(atLocalTime('2026-02-31', 10), null);
+  assert.equal(atLocalTime('2026-11-03', 24, 0), null);
 });
 
 test('task status moves through blocked before completed', () => {

@@ -3,6 +3,7 @@ import { ScrollView, Text } from 'react-native';
 
 import { router } from 'expo-router';
 
+import { DateField } from '@/components/DateField';
 import {
   Button,
   Card,
@@ -31,7 +32,8 @@ export default function CreateTaskScreen() {
   const [assignee, setAssignee] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [dueAt, setDueAt] = useState('');
+  const [due, setDue] = useState<Date | null>(null);
+  const [estimate, setEstimate] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [requirements, setRequirements] = useState('');
 
@@ -61,10 +63,9 @@ export default function CreateTaskScreen() {
       return;
     }
 
-    const due = dueAt ? new Date(dueAt) : null;
-
-    if (dueAt && Number.isNaN(due?.getTime())) {
-      setError('Enter a valid due date and time.');
+    const estimatedMinutes = estimate.trim() ? Number(estimate) : null;
+    if (estimatedMinutes != null && (!Number.isInteger(estimatedMinutes) || estimatedMinutes <= 0)) {
+      setError('Estimated minutes must be a whole number greater than 0.');
       return;
     }
 
@@ -78,6 +79,7 @@ export default function CreateTaskScreen() {
         title: title.trim(),
         description: description.trim(),
         due_at: due?.toISOString() || null,
+        estimated_minutes: estimatedMinutes,
         priority,
       })
       .select('id')
@@ -171,11 +173,14 @@ export default function CreateTaskScreen() {
           multiline
         />
 
+        <DateField label="Due" mode="datetime" value={due} onChange={setDue} />
+
         <Field
-          label="Due date and time (local)"
-          placeholder="YYYY-MM-DDTHH:mm (optional)"
-          value={dueAt}
-          onChangeText={setDueAt}
+          label="Estimated minutes"
+          placeholder="Optional, such as 90"
+          value={estimate}
+          onChangeText={setEstimate}
+          keyboardType="number-pad"
         />
 
         <Text style={styles.label}>Priority</Text>

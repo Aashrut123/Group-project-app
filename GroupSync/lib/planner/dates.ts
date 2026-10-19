@@ -46,3 +46,12 @@ export function eachDay(start: Date, end: Date): Date[] {
 export function todayDay(now = new Date()): string {
   return formatDay(now);
 }
+
+/** Local clock time on a calendar day. The returned Date keeps that hour in the device time zone. */
+export function atLocalTime(day: string, hour: number, minute = 0): Date | null {
+  const date = parseDay(day);
+  if (!date) return null;
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  date.setHours(hour, minute, 0, 0);
+  return date;
+}

@@ -3,12 +3,14 @@ import { Alert, ScrollView, Text } from 'react-native';
 
 import { router } from 'expo-router';
 
+import { DateField } from '@/components/DateField';
 import {
   Button,
   ErrorText,
   Field,
   Page,
 } from '@/components/ui';
+import { formatDay } from '@/lib/planner/dates';
 
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { theme } from '@/lib/theme';
@@ -28,7 +30,7 @@ export default function CreateGroupScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [outcome, setOutcome] = useState('');
-  const [deadline, setDeadline] = useState('');
+  const [deadline, setDeadline] = useState<Date | null>(null);
   const [color, setColor] = useState(colors[0]);
 
   const [busy, setBusy] = useState(false);
@@ -39,11 +41,6 @@ export default function CreateGroupScreen() {
       setError('Add a name for your project.');
       return;
     }
-    if (deadline && !/^\d{4}-\d{2}-\d{2}$/.test(deadline)) {
-      setError('Enter the deadline as YYYY-MM-DD, or leave it blank.');
-      return;
-    }
-
     setBusy(true);
     setError('');
 
@@ -52,7 +49,7 @@ export default function CreateGroupScreen() {
       description: description.trim(),
       color,
       outcome: outcome.trim(),
-      deadline: deadline || null,
+      deadline: deadline ? formatDay(deadline) : null,
       starts_on: new Date().toISOString().slice(0, 10),
       priority: 'medium',
       status: 'active',
@@ -114,13 +111,7 @@ export default function CreateGroupScreen() {
           multiline
         />
 
-        <Field
-          label="Deadline"
-          placeholder="YYYY-MM-DD (optional)"
-          value={deadline}
-          onChangeText={setDeadline}
-          autoCapitalize="none"
-        />
+        <DateField label="Deadline" value={deadline} onChange={setDeadline} />
 
         <Text style={styles.label}>Group color</Text>
 

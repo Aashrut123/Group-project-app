@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { DateField } from '@/components/DateField';
 import { Button, Card, Chip, ErrorText, Field, Page, Pill } from '@/components/ui';
 import { saveReviewedPlan } from '@/features/plans/savePlan';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { generatePlan } from '@/lib/planner/generate';
 import type { GeneratedPlan, PlannerMember } from '@/lib/planner/types';
-import { todayDay } from '@/lib/planner/dates';
+import { formatDay, parseDay, todayDay } from '@/lib/planner/dates';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 import type { Membership, UnavailablePeriod } from '@/types/database';
@@ -17,8 +18,8 @@ export default function PlanScreen() {
   const { groups, tasks, refresh } = useWorkspace();
   const [groupId, setGroupId] = useState(params.groupId ?? '');
   const [outcome, setOutcome] = useState('');
-  const [startDate, setStartDate] = useState(todayDay());
-  const [deadline, setDeadline] = useState('');
+  const [startDate, setStartDate] = useState<Date | null>(parseDay(todayDay()));
+  const [deadline, setDeadline] = useState<Date | null>(null);
   const [hours, setHours] = useState('6');
   const [constraints, setConstraints] = useState('');
   const [milestones, setMilestones] = useState('');
@@ -77,8 +78,8 @@ export default function PlanScreen() {
         {
           title: selectedGroup?.name || 'Project',
           outcome: outcome.trim() || selectedGroup?.outcome || selectedGroup?.description || '',
-          startDate: startDate || selectedGroup?.starts_on || todayDay(),
-          deadline: deadline || selectedGroup?.deadline || '',
+          startDate: formatDay(startDate ?? parseDay(selectedGroup?.starts_on || todayDay()) ?? new Date()),
+          deadline: deadline ? formatDay(deadline) : selectedGroup?.deadline || '',
           priority: selectedGroup?.priority || 'medium',
           weeklyHoursDefault: weekly,
           constraints,
@@ -120,7 +121,14 @@ export default function PlanScreen() {
       plan,
       tasks: chosen,
       meetings: includeMeetings ? plan.meetings : [],
-      input: { outcome, startDate, deadline, hours, constraints, milestones },
+        input: {
+          outcome,
+          startDate: startDate ? formatDay(startDate) : '',
+          deadline: deadline ? formatDay(deadline) : '',
+          hours,
+          constraints,
+          milestones,
+        },
     });
     setBusy(false);
     if (result.error) {
@@ -150,15 +158,15 @@ export default function PlanScreen() {
               onPress={() => {
                 setGroupId(group.id);
                 setOutcome(group.outcome || group.description || '');
-                setDeadline(group.deadline || '');
-                setStartDate(group.starts_on || todayDay());
+                setDeadline(group.deadline ? parseDay(group.deadline) : null);
+                setStartDate(group.starts_on ? parseDay(group.starts_on) : parseDay(todayDay()));
               }}
             />
           ))}
         </ScrollView>
         <Field label="Desired outcome" value={outcome} onChangeText={setOutcome} multiline placeholder="What should be true when this project is done?" />
-        <Field label="Start date" value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" autoCapitalize="none" />
-        <Field label="Deadline" value={deadline} onChangeText={setDeadline} placeholder="YYYY-MM-DD" autoCapitalize="none" />
+        <DateField label="Start date" value={startDate} onChange={setStartDate} />
+        <DateField label="Deadline" value={deadline} onChange={setDeadline} />
         <Field label="Default hours each person can give per week" value={hours} onChangeText={setHours} keyboardType="number-pad" />
         <Field label="Constraints and blockers" value={constraints} onChangeText={setConstraints} multiline placeholder="Exams, parts on order, skills the team does not have" />
         <Field label="Milestones, one per line" value={milestones} onChangeText={setMilestones} multiline placeholder={'Prototype chassis | 2026-11-10\nDemo video'} />

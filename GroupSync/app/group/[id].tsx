@@ -9,12 +9,14 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 
+import { DateField } from '@/components/DateField';
 import {
   Button,
   Card,
   Chip,
   EmptyState,
   ErrorText,
+  Field,
   Loading,
   Page,
   Pill,
@@ -22,6 +24,7 @@ import {
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { formatDate, formatTime } from '@/lib/format';
+import { formatDay, parseDay } from '@/lib/planner/dates';
 import { completionPercent } from '@/lib/planner/status';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
@@ -32,6 +35,7 @@ import type {
   Milestone,
   ProgressLog,
   Task,
+  TaskPriority,
 } from '@/types/database';
 
 export default function GroupDetailScreen() {
@@ -49,6 +53,9 @@ export default function GroupDetailScreen() {
   const [section, setSection] = useState<'overview' | 'tasks' | 'timeline' | 'team' | 'updates'>('overview');
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [logs, setLogs] = useState<ProgressLog[]>([]);
+  const [outcome, setOutcome] = useState('');
+  const [deadline, setDeadline] = useState<Date | null>(null);
+  const [priority, setPriority] = useState<TaskPriority>('medium');
 
   const load = useCallback(async () => {
     const [g, m, e, t] = await Promise.all([
@@ -87,7 +94,11 @@ export default function GroupDetailScreen() {
       setError(issue.message);
     }
 
-    setGroup(g.data as Group | null);
+    const loadedGroup = g.data as Group | null;
+    setGroup(loadedGroup);
+    setOutcome(loadedGroup?.outcome || '');
+    setDeadline(loadedGroup?.deadline ? parseDay(loadedGroup.deadline) : null);
+    setPriority(loadedGroup?.priority || 'medium');
     setMembers((m.data || []) as Membership[]);
     setEvents((e.data || []) as CalendarEvent[]);
     setTasks((t.data || []) as Task[]);
@@ -145,6 +156,19 @@ export default function GroupDetailScreen() {
 
   const canManage =
     myRole === 'owner' || myRole === 'admin';
+
+  const saveProject = async () => {
+    setBusy(true);
+    setError('');
+    const { error: issue } = await supabase.from('groups').update({
+      outcome: outcome.trim(),
+      deadline: deadline ? formatDay(deadline) : null,
+      priority,
+    }).eq('id', id);
+    setBusy(false);
+    if (issue) setError(issue.message);
+    else await load();
+  };
 
   const invite = async () => {
     setBusy(true);
@@ -408,6 +432,20 @@ export default function GroupDetailScreen() {
                 {inviteCode}
               </Text>
             ) : null}
+          </Card>
+        ) : null}
+
+        {section === 'overview' && canManage ? (
+          <Card>
+            <Text style={styles.heading}>Project settings</Text>
+            <Field label="Intended outcome" value={outcome} onChangeText={setOutcome} multiline placeholder="What does done look like?" />
+            <DateField label="Deadline" value={deadline} onChange={setDeadline} />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+              {(['low', 'medium', 'high'] as const).map((value) => (
+                <Chip key={value} label={value} active={priority === value} onPress={() => setPriority(value)} />
+              ))}
+            </View>
+            <Button title={busy ? 'Saving…' : 'Save project'} onPress={() => void saveProject()} disabled={busy} secondary />
           </Card>
         ) : null}
 
