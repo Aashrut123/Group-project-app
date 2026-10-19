@@ -267,7 +267,7 @@ export default function TaskDetailScreen() {
 
         <View style={styles.row}>
           {(
-            ['todo', 'in_progress', 'completed'] as TaskStatus[]
+            ['todo', 'in_progress', 'blocked', 'completed'] as TaskStatus[]
           ).map(value => (
             <Text
               key={value}

@@ -27,6 +27,8 @@ export default function CreateGroupScreen() {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [outcome, setOutcome] = useState('');
+  const [deadline, setDeadline] = useState('');
   const [color, setColor] = useState(colors[0]);
 
   const [busy, setBusy] = useState(false);
@@ -34,20 +36,38 @@ export default function CreateGroupScreen() {
 
   const create = async () => {
     if (!name.trim()) {
-      setError('Add a name for your group.');
+      setError('Add a name for your project.');
+      return;
+    }
+    if (deadline && !/^\d{4}-\d{2}-\d{2}$/.test(deadline)) {
+      setError('Enter the deadline as YYYY-MM-DD, or leave it blank.');
       return;
     }
 
     setBusy(true);
     setError('');
 
-    const { error: issue } = await supabase
-      .from('groups')
-      .insert({
-        name: name.trim(),
-        description: description.trim(),
+    const payload = {
+      name: name.trim(),
+      description: description.trim(),
+      color,
+      outcome: outcome.trim(),
+      deadline: deadline || null,
+      starts_on: new Date().toISOString().slice(0, 10),
+      priority: 'medium',
+      status: 'active',
+    };
+    let warning = '';
+    let { error: issue } = await supabase.from('groups').insert(payload);
+    if (issue && /outcome|deadline|starts_on|priority|status/.test(issue.message)) {
+      const fallback = await supabase.from('groups').insert({
+        name: payload.name,
+        description: payload.description,
         color,
       });
+      issue = fallback.error;
+      warning = 'The project was created. Apply the latest database migration to store the outcome and deadline.';
+    }
 
     setBusy(false);
 
@@ -59,8 +79,8 @@ export default function CreateGroupScreen() {
     await refresh();
 
     Alert.alert(
-      'Group created',
-      'Your group is ready. Open it to invite your teammates.'
+      'Project created',
+      warning || 'Your project is ready. Open it to invite your teammates.'
     );
 
     router.back();
@@ -84,6 +104,22 @@ export default function CreateGroupScreen() {
           onChangeText={setDescription}
           multiline
           maxLength={400}
+        />
+
+        <Field
+          label="Intended outcome"
+          placeholder="What does done look like?"
+          value={outcome}
+          onChangeText={setOutcome}
+          multiline
+        />
+
+        <Field
+          label="Deadline"
+          placeholder="YYYY-MM-DD (optional)"
+          value={deadline}
+          onChangeText={setDeadline}
+          autoCapitalize="none"
         />
 
         <Text style={styles.label}>Group color</Text>

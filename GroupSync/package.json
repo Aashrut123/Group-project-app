@@ -9,7 +9,8 @@
     "android": "expo start --android",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "node --experimental-strip-types --experimental-transform-types --import ./test/register.mjs --test lib/planner/planner.test.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

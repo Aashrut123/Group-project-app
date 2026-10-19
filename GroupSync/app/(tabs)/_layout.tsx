@@ -67,7 +67,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="groups"
-        options={{ title: 'Groups' }}
+        options={{ title: 'Projects' }}
       />
       <Tabs.Screen
         name="tasks"
