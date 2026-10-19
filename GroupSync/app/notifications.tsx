@@ -35,7 +35,7 @@ export default function NotificationsScreen() {
   return (
     <Page>
       <ScrollView contentContainerStyle={{ paddingBottom: 28 }}>
-        <Text style={styles.lead}>These are in-app notices stored for your account. GroupSync is not sending push notifications.</Text>
+        <Text style={styles.lead}>This list stays inside GroupSync. Phone alerts for due tasks and upcoming meetings are turned on from Profile.</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {notifications.length ? notifications.map((item) => (
           <Card key={item.id}>
