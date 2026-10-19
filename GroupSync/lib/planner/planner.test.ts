@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { findConflicts, overloadedDays } from './conflicts.ts';
-import { atLocalTime, formatDay, overlapsLocalDay } from './dates.ts';
+import { atLocalTime, formatDay, isStillScheduled, overlapsLocalDay } from './dates.ts';
 import { buildFallbackPlan } from './fallback.ts';
 import { canPromoteMember, canRemoveMember } from './permissions.ts';
 import { acceptedChanges, proposeReschedule } from './reschedule.ts';
@@ -193,6 +193,12 @@ test('conflicts ignore deadlines and catch unavailable overlaps', () => {
     { dueDate: '2026-11-03', estimatedMinutes: 90, status: 'todo' },
     { dueDate: '2026-11-03', estimatedMinutes: 90, status: 'completed' },
   ], 60), [{ day: '2026-11-03', minutes: 90 }]);
+});
+
+test('a meeting is no longer upcoming after it ends', () => {
+  const now = new Date('2026-10-19T18:00:00.000Z');
+  assert.equal(isStillScheduled('2026-10-19T17:00:00.000Z', now), false);
+  assert.equal(isStillScheduled('2026-10-19T19:00:00.000Z', now), true);
 });
 
 test('a meeting shows on the local day it occupies', () => {

@@ -47,6 +47,12 @@ export function todayDay(now = new Date()): string {
   return formatDay(now);
 }
 
+/** A meeting or deadline is still upcoming until its end time has passed. */
+export function isStillScheduled(endsAt: string, now = new Date()): boolean {
+  const end = new Date(endsAt);
+  return !Number.isNaN(end.getTime()) && end > now;
+}
+
 /** True when the event covers any part of the local calendar day. */
 export function overlapsLocalDay(startsAt: string, endsAt: string, day: Date): boolean {
   const start = new Date(startsAt);

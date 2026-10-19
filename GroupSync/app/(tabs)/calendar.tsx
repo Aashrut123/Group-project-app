@@ -16,7 +16,7 @@ import {
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { findConflicts } from '@/lib/planner/conflicts';
-import { overlapsLocalDay } from '@/lib/planner/dates';
+import { isStillScheduled, overlapsLocalDay } from '@/lib/planner/dates';
 import { formatDate, formatTime } from '@/lib/format';
 import { theme } from '@/lib/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -110,7 +110,7 @@ export default function CalendarScreen() {
 
   const visible = useMemo(() => {
     if (view === 'agenda') {
-      return filtered;
+      return filtered.filter((event) => isStillScheduled(event.ends_at));
     }
 
     return filtered.filter(event => overlapsLocalDay(event.starts_at, event.ends_at, selectedDay));
@@ -421,8 +421,10 @@ export default function CalendarScreen() {
             ))
           ) : (
             <EmptyState
-              title="Nothing on this day"
-              body="Meetings and deadlines that fall on the selected day show up here. Switch to Agenda to see everything coming up."
+              title={view === 'agenda' ? 'Nothing coming up' : 'Nothing on this day'}
+              body={view === 'agenda'
+                ? 'Meetings and deadlines that have already ended stay on their calendar day, and drop off this list.'
+                : 'Meetings and deadlines that fall on the selected day show up here. Switch to Agenda to see what is still ahead.'}
             />
           )}
 

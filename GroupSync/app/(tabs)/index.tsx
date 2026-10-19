@@ -7,6 +7,7 @@ import { Button, Card, EmptyState, ErrorText, Page, Pill } from '@/components/ui
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { findConflicts } from '@/lib/planner/conflicts';
+import { isStillScheduled } from '@/lib/planner/dates';
 import { completionPercent } from '@/lib/planner/status';
 import { formatDate, formatTime } from '@/lib/format';
 import { theme } from '@/lib/theme';
@@ -20,11 +21,11 @@ export default function HomeScreen() {
   const openMine = mine.filter((task) => task.status !== 'completed');
   const nextTask = [...openMine].sort((a, b) => (a.due_at || '9999').localeCompare(b.due_at || '9999'))[0];
   const overdue = openMine.filter((task) => task.due_at && task.due_at < new Date().toISOString());
-  const upcomingEvents = events.slice(0, 3);
+  const upcomingEvents = events.filter((event) => isStillScheduled(event.ends_at)).slice(0, 3);
   const unread = notifications.filter((item) => !item.read_at).length;
 
   const conflicts = useMemo(() => findConflicts([
-    ...events.map((event) => ({
+    ...events.filter((event) => isStillScheduled(event.ends_at)).map((event) => ({
       id: event.id,
       title: event.title,
       start: event.starts_at,

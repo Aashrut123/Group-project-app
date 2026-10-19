@@ -77,6 +77,7 @@ export default function GroupDetailScreen() {
         .from('events')
         .select('*')
         .eq('group_id', id)
+        .gt('ends_at', new Date().toISOString())
         .order('starts_at')
         .limit(10),
 
@@ -527,8 +528,8 @@ export default function GroupDetailScreen() {
           ))
         ) : (
           <EmptyState
-            title="No group dates yet"
-            body="Add a meeting, deadline or event so everyone sees it."
+            title="Nothing coming up"
+            body="Meetings that have already ended stay on the calendar day you tap."
           />
         )}
 
