@@ -14,12 +14,14 @@ import {
   Title,
 } from '@/components/ui';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { completionPercent } from '@/lib/planner/status';
+import { formatDate } from '@/lib/format';
 import { theme } from '@/lib/theme';
 import { supabase } from '@/lib/supabase';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function GroupsScreen() {
-  const { groups, loading, error, refresh } = useWorkspace();
+  const { groups, tasks, loading, error, refresh } = useWorkspace();
 
   const [code, setCode] = useState('');
   const [working, setWorking] = useState(false);
@@ -62,8 +64,8 @@ export default function GroupsScreen() {
           contentContainerStyle={{ paddingBottom: 24 }}
         >
           <View style={styles.head}>
-            <Title subtitle="Your projects, clubs and teams">
-              Groups
+            <Title subtitle="Clubs, teams, and shared deadlines">
+              Projects
             </Title>
 
             <Text
@@ -76,8 +78,8 @@ export default function GroupsScreen() {
 
           {error ? <ErrorText>{error}</ErrorText> : null}
 
-          {groups.length ? (
-            groups.map(group => (
+          {groups.filter((group) => group.status !== 'archived').length ? (
+            groups.filter((group) => group.status !== 'archived').map(group => (
               <Card
                 key={group.id}
                 style={styles.group}
@@ -101,8 +103,9 @@ export default function GroupsScreen() {
                     style={styles.desc}
                     numberOfLines={2}
                   >
-                    {group.description ||
-                      'A shared group workspace'}
+                    {completionPercent(tasks.filter((task) => task.group_id === group.id))}% complete
+                    {group.deadline ? ` · due ${formatDate(group.deadline)}` : ''}
+                    {group.description ? ` · ${group.description}` : ''}
                   </Text>
                 </View>
 

@@ -159,7 +159,11 @@ create or replace function public.prevent_group_owner_change()
 returns trigger language plpgsql set search_path = '' as $$
 begin
   if new.created_by is distinct from old.created_by then raise exception 'The record creator cannot be changed'; end if;
-  if tg_table_name <> 'groups' and new.group_id is distinct from old.group_id then raise exception 'Shared records cannot be moved between groups'; end if;
+  -- Projects are stored in groups, which has id rather than group_id. The field check has to stay
+  -- in its own branch so saving a project does not read a column that is not there.
+  if tg_table_name <> 'groups' then
+    if new.group_id is distinct from old.group_id then raise exception 'Shared records cannot be moved between groups'; end if;
+  end if;
   return new;
 end;
 $$;

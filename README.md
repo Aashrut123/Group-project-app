@@ -44,9 +44,11 @@ npx expo install --fix
 
    Expo exposes `EXPO_PUBLIC_` values in the client bundle. They are public client values; database security is enforced by RLS, not by hiding these values.
 
-4. In the Supabase Dashboard, open **SQL Editor**, paste and run [`supabase/migrations/202610100001_initial_schema.sql`](supabase/migrations/202610100001_initial_schema.sql). The migration creates the profile trigger, application tables, indexes, RLS policies, secure invitation functions, and realtime publication entries.
-5. In **Authentication → URL Configuration**, add the app callback URL to the allowed redirect URLs. For installed builds use `groupsync://callback`. Expo Go generates a temporary development URL; add that URL (or an appropriately scoped `exp://**` pattern for local development) while testing password resets. Confirm the project email settings allow the sign-up flow you want.
-6. Restart Expo after changing `.env` so Metro reloads the variables.
+4. In the Supabase Dashboard, open **SQL Editor**, paste and run [`GroupSync/supabase/migrations/202610100001_initial_schema.sql`](GroupSync/supabase/migrations/202610100001_initial_schema.sql), then [`GroupSync/supabase/migrations/202610190002_project_platform.sql`](GroupSync/supabase/migrations/202610190002_project_platform.sql). The first migration creates profiles, groups, events, tasks, meetings, RLS, and invitations. The second adds project goals, milestones, task dependencies, progress logs, availability, planning sessions, in-app notifications, and the `blocked` task status. Apply the second file to a database that already ran the first one. It does not delete existing rows.
+5. Optional AI plans: deploy `supabase/functions/plan` and set the Edge Function secret `OPENAI_API_KEY`. The mobile app never contains that key. If the function is missing, the app uses the built-in planner and labels the result as such. Suggested meetings and reschedule proposals are not written until someone accepts them.
+6. Create a public Storage bucket named `avatars` if profile photos should upload. The second migration attempts to create it.
+7. In **Authentication → URL Configuration**, add the app callback URL to the allowed redirect URLs. For installed builds use `groupsync://callback`. Expo Go generates a temporary development URL; add that URL (or an appropriately scoped `exp://**` pattern for local development) while testing password resets. Confirm the project email settings allow the sign-up flow you want.
+8. Restart Expo after changing `.env` so Metro reloads the variables.
 
 The migration's invitation code is random, stored only as a SHA-256 digest, expires, and can be redeemed once. The join function checks and consumes it inside a database transaction. Group membership and group content access are controlled by RLS and database functions.
 
@@ -81,8 +83,11 @@ npm run web
 ```sh
 npm run typecheck
 npm run lint
+npm test
 npx expo install --check
 ```
+
+`npm test` runs the planner, conflict, permission, and reschedule checks. It does not sign in to Supabase.
 
 The app's database-backed screens require the migration and valid `.env` keys. If the app opens without those values, the authentication screen explains how to configure the connection.
 

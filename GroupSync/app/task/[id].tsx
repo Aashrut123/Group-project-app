@@ -2,9 +2,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 
+import { DateField } from '@/components/DateField';
 import {
   Button,
   Card,
+  Chip,
   ErrorText,
   Field,
   Loading,
@@ -13,7 +15,7 @@ import {
 } from '@/components/ui';
 
 import { useAuth } from '@/features/auth/AuthProvider';
-import { formatDate } from '@/lib/format';
+import { formatDate, personName } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 
@@ -36,6 +38,12 @@ export default function TaskDetailScreen() {
   const [description, setDescription] = useState('');
   const [comment, setComment] = useState('');
   const [newRequirement, setNewRequirement] = useState('');
+  const [due, setDue] = useState<Date | null>(null);
+  const [estimated, setEstimated] = useState('');
+  const [actual, setActual] = useState('');
+  const [blocked, setBlocked] = useState('');
+  const [dependencies, setDependencies] = useState<{ id: string; title: string; status: string }[]>([]);
+  const [members, setMembers] = useState<{ user_id: string; name: string }[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -46,7 +54,7 @@ export default function TaskDetailScreen() {
       supabase
         .from('tasks')
         .select(
-          '*, group:groups(id,name,color), assignments:task_assignments(user_id)'
+          '*, group:groups(id,name,color), assignments:task_assignments(user_id, profile:profiles(display_name))'
         )
         .eq('id', id)
         .single(),
@@ -68,11 +76,36 @@ export default function TaskDetailScreen() {
 
     if (issue) setError(issue.message);
 
-    setTask(t.data as Task | null);
-    setTitle(t.data?.title || '');
-    setDescription(t.data?.description || '');
+    const loaded = t.data as Task | null;
+    setTask(loaded);
+    setTitle(loaded?.title || '');
+    setDescription(loaded?.description || '');
+    setDue(loaded?.due_at ? new Date(loaded.due_at) : null);
+    setEstimated(loaded?.estimated_minutes ? String(loaded.estimated_minutes) : '');
+    setActual(loaded?.actual_minutes != null ? String(loaded.actual_minutes) : '');
+    setBlocked(loaded?.blocked_reason || '');
     setRequirements((r.data || []) as Requirement[]);
     setComments((c.data || []) as Comment[]);
+    const dependencyRows = await supabase.from('task_dependencies').select('depends_on').eq('task_id', id);
+    if (!dependencyRows.error && dependencyRows.data?.length) {
+      const ids = dependencyRows.data.map((row) => row.depends_on as string);
+      const parents = await supabase.from('tasks').select('id,title,status').in('id', ids);
+      setDependencies(parents.error ? [] : (parents.data as { id: string; title: string; status: string }[]) || []);
+    } else {
+      setDependencies([]);
+    }
+    if (loaded?.group_id) {
+      const memberships = await supabase
+        .from('group_memberships')
+        .select('user_id, profile:profiles(display_name)')
+        .eq('group_id', loaded.group_id);
+      setMembers(
+        (memberships.data || []).map((row) => ({
+          user_id: row.user_id,
+          name: personName(row.profile),
+        })),
+      );
+    }
     setLoading(false);
   }, [id]);
 
@@ -115,6 +148,39 @@ export default function TaskDetailScreen() {
     } else {
       await load();
     }
+  };
+
+  const saveSchedule = async () => {
+    const estimatedMinutes = estimated.trim() ? Number(estimated) : null;
+    const actualMinutes = actual.trim() ? Number(actual) : null;
+    if (estimatedMinutes != null && (!Number.isInteger(estimatedMinutes) || estimatedMinutes <= 0)) {
+      setError('Estimated minutes must be a whole number greater than 0.');
+      return;
+    }
+    if (actualMinutes != null && (!Number.isInteger(actualMinutes) || actualMinutes < 0)) {
+      setError('Time spent must be a whole number of minutes.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    const { error: issue } = await supabase.from('tasks').update({
+      due_at: due ? due.toISOString() : null,
+      estimated_minutes: estimatedMinutes,
+      actual_minutes: actualMinutes,
+      blocked_reason: blocked.trim(),
+    }).eq('id', id);
+    setBusy(false);
+    if (issue) setError(issue.message);
+    else await load();
+  };
+
+  const toggleAssignee = async (userId: string) => {
+    const assigned = task.assignments?.some((assignment) => assignment.user_id === userId);
+    const result = assigned
+      ? await supabase.from('task_assignments').delete().eq('task_id', id).eq('user_id', userId)
+      : await supabase.from('task_assignments').insert({ task_id: id, user_id: userId });
+    if (result.error) setError(result.error.message);
+    else await load();
   };
 
   const setStatus = async (status: TaskStatus) => {
@@ -267,7 +333,7 @@ export default function TaskDetailScreen() {
 
         <View style={styles.row}>
           {(
-            ['todo', 'in_progress', 'completed'] as TaskStatus[]
+            ['todo', 'in_progress', 'blocked', 'completed'] as TaskStatus[]
           ).map(value => (
             <Text
               key={value}
@@ -281,6 +347,41 @@ export default function TaskDetailScreen() {
             </Text>
           ))}
         </View>
+
+        <Text style={styles.heading}>Assigned to</Text>
+        {members.length ? (
+          <View style={styles.row}>
+            {members.map((member) => (
+              <Chip
+                key={member.user_id}
+                label={member.name}
+                active={task.assignments?.some((assignment) => assignment.user_id === member.user_id)}
+                onPress={() => void toggleAssignee(member.user_id)}
+              />
+            ))}
+          </View>
+        ) : (
+          <Card>
+            <Text style={styles.body}>No teammates are in this project yet.</Text>
+          </Card>
+        )}
+
+        <Text style={styles.heading}>Schedule</Text>
+        <DateField label="Due" mode="datetime" value={due} onChange={setDue} />
+        <Field label="Estimated minutes" value={estimated} onChangeText={setEstimated} keyboardType="number-pad" placeholder="Optional" />
+        <Field label="Minutes you have spent" value={actual} onChangeText={setActual} keyboardType="number-pad" placeholder="Optional" />
+        <Field label="What is blocking this" value={blocked} onChangeText={setBlocked} placeholder="Leave blank if nothing is in the way" />
+        <Button title={busy ? 'Saving…' : 'Save schedule'} onPress={() => void saveSchedule()} disabled={busy} secondary />
+        {dependencies.length ? (
+          <Card>
+            <Text style={styles.heading}>Depends on</Text>
+            {dependencies.map((item) => (
+              <Text key={item.id} style={styles.body} onPress={() => router.push(`/task/${item.id}`)}>
+                {item.title} · {item.status.replace(/_/g, ' ')}
+              </Text>
+            ))}
+          </Card>
+        ) : null}
 
         <Text style={styles.heading}>Requirements</Text>
 
@@ -384,6 +485,7 @@ const styles = {
 
   row: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 7,
   },
 

@@ -3,6 +3,8 @@ import { Text } from 'react-native';
 
 import { Loading } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { usePhoneAlerts } from '@/hooks/usePhoneAlerts';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { theme } from '@/lib/theme';
 
 const glyph: Record<string, string> = {
@@ -15,6 +17,8 @@ const glyph: Record<string, string> = {
 
 export default function TabLayout() {
   const { user, loading } = useAuth();
+  const { tasks, events } = useWorkspace();
+  usePhoneAlerts(Boolean(user), tasks, events);
 
   if (loading) {
     return <Loading />;
@@ -67,7 +71,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="groups"
-        options={{ title: 'Groups' }}
+        options={{ title: 'Projects' }}
       />
       <Tabs.Screen
         name="tasks"

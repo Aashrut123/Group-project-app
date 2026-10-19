@@ -9,11 +9,14 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 
+import { DateField } from '@/components/DateField';
 import {
   Button,
   Card,
+  Chip,
   EmptyState,
   ErrorText,
+  Field,
   Loading,
   Page,
   Pill,
@@ -21,13 +24,18 @@ import {
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { formatDate, formatTime } from '@/lib/format';
+import { formatDay, parseDay } from '@/lib/planner/dates';
+import { completionPercent } from '@/lib/planner/status';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 import type {
   CalendarEvent,
   Group,
   Membership,
+  Milestone,
+  ProgressLog,
   Task,
+  TaskPriority,
 } from '@/types/database';
 
 export default function GroupDetailScreen() {
@@ -42,6 +50,12 @@ export default function GroupDetailScreen() {
   const [error, setError] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [busy, setBusy] = useState(false);
+  const [section, setSection] = useState<'overview' | 'tasks' | 'timeline' | 'team' | 'updates'>('overview');
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [logs, setLogs] = useState<ProgressLog[]>([]);
+  const [outcome, setOutcome] = useState('');
+  const [deadline, setDeadline] = useState<Date | null>(null);
+  const [priority, setPriority] = useState<TaskPriority>('medium');
 
   const load = useCallback(async () => {
     const [g, m, e, t] = await Promise.all([
@@ -63,6 +77,7 @@ export default function GroupDetailScreen() {
         .from('events')
         .select('*')
         .eq('group_id', id)
+        .gt('ends_at', new Date().toISOString())
         .order('starts_at')
         .limit(10),
 
@@ -80,10 +95,20 @@ export default function GroupDetailScreen() {
       setError(issue.message);
     }
 
-    setGroup(g.data as Group | null);
+    const loadedGroup = g.data as Group | null;
+    setGroup(loadedGroup);
+    setOutcome(loadedGroup?.outcome || '');
+    setDeadline(loadedGroup?.deadline ? parseDay(loadedGroup.deadline) : null);
+    setPriority(loadedGroup?.priority || 'medium');
     setMembers((m.data || []) as Membership[]);
     setEvents((e.data || []) as CalendarEvent[]);
     setTasks((t.data || []) as Task[]);
+    const [milestoneResult, logResult] = await Promise.all([
+      supabase.from('milestones').select('*').eq('group_id', id).order('due_on'),
+      supabase.from('progress_logs').select('*, profile:profiles(display_name)').eq('group_id', id).order('created_at', { ascending: false }).limit(20),
+    ]);
+    setMilestones(milestoneResult.error ? [] : (milestoneResult.data || []) as Milestone[]);
+    setLogs(logResult.error ? [] : (logResult.data || []) as ProgressLog[]);
     setLoading(false);
   }, [id]);
 
@@ -132,6 +157,19 @@ export default function GroupDetailScreen() {
 
   const canManage =
     myRole === 'owner' || myRole === 'admin';
+
+  const saveProject = async () => {
+    setBusy(true);
+    setError('');
+    const { error: issue } = await supabase.from('groups').update({
+      outcome: outcome.trim(),
+      deadline: deadline ? formatDay(deadline) : null,
+      priority,
+    }).eq('id', id);
+    setBusy(false);
+    if (issue) setError(issue.message);
+    else await load();
+  };
 
   const invite = async () => {
     setBusy(true);
@@ -291,6 +329,26 @@ export default function GroupDetailScreen() {
           </View>
         </View>
 
+        <Text style={styles.muted}>
+          {completionPercent(tasks, milestones.map((item) => ({ completed: Boolean(item.completed_at) })))}% complete
+          {group?.deadline ? ` · deadline ${formatDate(group.deadline)}` : ''}
+          {group?.outcome ? ` · ${group.outcome}` : ''}
+        </Text>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sections}>
+          {([
+            ['overview', 'Overview'],
+            ['tasks', 'Tasks'],
+            ['timeline', 'Timeline'],
+            ['team', 'Team'],
+            ['updates', 'Updates'],
+          ] as const).map(([value, label]) => (
+            <Chip key={value} label={label} active={section === value} onPress={() => setSection(value)} />
+          ))}
+        </ScrollView>
+
+        {(section === 'overview' || section === 'team') ? (
+        <>
         <View style={styles.section}>
           <Text style={styles.heading}>
             People{' '}
@@ -378,6 +436,50 @@ export default function GroupDetailScreen() {
           </Card>
         ) : null}
 
+        {section === 'overview' && canManage ? (
+          <Card>
+            <Text style={styles.heading}>Project settings</Text>
+            <Field label="Intended outcome" value={outcome} onChangeText={setOutcome} multiline placeholder="What does done look like?" />
+            <DateField label="Deadline" value={deadline} onChange={setDeadline} />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+              {(['low', 'medium', 'high'] as const).map((value) => (
+                <Chip key={value} label={value} active={priority === value} onPress={() => setPriority(value)} />
+              ))}
+            </View>
+            <Button title={busy ? 'Saving…' : 'Save project'} onPress={() => void saveProject()} disabled={busy} secondary />
+          </Card>
+        ) : null}
+
+        {section === 'overview' ? (
+          <Card>
+            <Text style={styles.heading}>Plan and adjust</Text>
+            <Button title="Build a plan" onPress={() => router.push({ pathname: '/plan', params: { groupId: id } })} />
+            <Button title="Propose a reschedule" onPress={() => router.push({ pathname: '/reschedule', params: { groupId: id } })} secondary />
+            <Button title="Post a progress log" onPress={() => router.push({ pathname: '/progress', params: { groupId: id } })} secondary />
+            {myRole === 'owner' ? (
+              <Button
+                title={group?.status === 'archived' ? 'Archived' : 'Archive project'}
+                disabled={busy || group?.status === 'archived'}
+                secondary
+                onPress={() => {
+                  Alert.alert('Archive this project?', 'Members keep their history, and the project leaves the active list.', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Archive', style: 'destructive', onPress: () => void (async () => {
+                      const { error: issue } = await supabase.from('groups').update({ status: 'archived', archived_at: new Date().toISOString() }).eq('id', id);
+                      if (issue) setError(issue.message);
+                      else await load();
+                    })() },
+                  ]);
+                }}
+              />
+            ) : null}
+          </Card>
+        ) : null}
+        </>
+        ) : null}
+
+        {(section === 'overview' || section === 'timeline') ? (
+        <>
         <View style={styles.section}>
           <Text style={styles.heading}>
             Upcoming calendar
@@ -426,11 +528,28 @@ export default function GroupDetailScreen() {
           ))
         ) : (
           <EmptyState
-            title="No group dates yet"
-            body="Add a meeting, deadline or event so everyone sees it."
+            title="Nothing coming up"
+            body="Meetings that have already ended stay on the calendar day you tap."
           />
         )}
 
+        </>
+        ) : null}
+
+        {section === 'timeline' ? (
+          <>
+            <Text style={styles.heading}>Milestones</Text>
+            {milestones.length ? milestones.map((milestone) => (
+              <Card key={milestone.id}>
+                <Text style={styles.itemTitle}>{milestone.title}</Text>
+                <Text style={styles.muted}>{milestone.due_on ? formatDate(milestone.due_on) : 'No date'}{milestone.completed_at ? ' · done' : ''}</Text>
+              </Card>
+            )) : <EmptyState title="No milestones yet" body="A reviewed plan can add milestones, or you can keep using tasks and calendar items." />}
+          </>
+        ) : null}
+
+        {(section === 'overview' || section === 'tasks') ? (
+        <>
         <View style={styles.section}>
           <Text style={styles.heading}>
             Project tasks
@@ -477,8 +596,26 @@ export default function GroupDetailScreen() {
           />
         )}
 
+        </>
+        ) : null}
+
+        {section === 'updates' ? (
+          <>
+            <Button title="Post a progress log" onPress={() => router.push({ pathname: '/progress', params: { groupId: id } })} />
+            {logs.length ? logs.map((log) => (
+              <Card key={log.id}>
+                <Text style={styles.itemTitle}>{log.profile?.display_name || 'Teammate'}</Text>
+                <Text style={styles.muted}>{formatDate(log.log_date)}</Text>
+                <Text style={styles.muted}>{log.accomplishments}</Text>
+                {log.next_steps ? <Text style={styles.muted}>Next: {log.next_steps}</Text> : null}
+                {log.blockers ? <Text style={styles.muted}>Blocked: {log.blockers}</Text> : null}
+              </Card>
+            )) : <EmptyState title="No updates yet" body="Progress logs only show work someone on the team actually posted." />}
+          </>
+        ) : null}
+
         <Button
-          title="Refresh group"
+          title="Refresh project"
           onPress={() => void load()}
           secondary
         />
@@ -498,6 +635,10 @@ const styles = {
     width: 12,
     height: 46,
     borderRadius: 8,
+  },
+  sections: {
+    gap: 8,
+    paddingBottom: 12,
   },
   section: {
     flexDirection: 'row',

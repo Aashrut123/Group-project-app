@@ -3,6 +3,7 @@ import { ScrollView, Text } from 'react-native';
 
 import { router } from 'expo-router';
 
+import { DateField } from '@/components/DateField';
 import {
   Button,
   Card,
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui';
 
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { personName } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 
@@ -28,10 +30,11 @@ export default function CreateTaskScreen() {
 
   const [groupId, setGroupId] = useState('');
   const [members, setMembers] = useState<Membership[]>([]);
-  const [assignee, setAssignee] = useState('');
+  const [assignees, setAssignees] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [dueAt, setDueAt] = useState('');
+  const [due, setDue] = useState<Date | null>(null);
+  const [estimate, setEstimate] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [requirements, setRequirements] = useState('');
 
@@ -61,10 +64,9 @@ export default function CreateTaskScreen() {
       return;
     }
 
-    const due = dueAt ? new Date(dueAt) : null;
-
-    if (dueAt && Number.isNaN(due?.getTime())) {
-      setError('Enter a valid due date and time.');
+    const estimatedMinutes = estimate.trim() ? Number(estimate) : null;
+    if (estimatedMinutes != null && (!Number.isInteger(estimatedMinutes) || estimatedMinutes <= 0)) {
+      setError('Estimated minutes must be a whole number greater than 0.');
       return;
     }
 
@@ -78,6 +80,7 @@ export default function CreateTaskScreen() {
         title: title.trim(),
         description: description.trim(),
         due_at: due?.toISOString() || null,
+        estimated_minutes: estimatedMinutes,
         priority,
       })
       .select('id')
@@ -89,13 +92,10 @@ export default function CreateTaskScreen() {
       return;
     }
 
-    if (assignee) {
+    if (assignees.length) {
       const { error: assignmentIssue } = await supabase
         .from('task_assignments')
-        .insert({
-          task_id: task.id,
-          user_id: assignee,
-        });
+        .insert(assignees.map((userId) => ({ task_id: task.id, user_id: userId })));
 
       if (assignmentIssue) {
         setError(
@@ -144,7 +144,7 @@ export default function CreateTaskScreen() {
               key={group.id}
               onPress={() => {
                 setGroupId(group.id);
-                setAssignee('');
+                setAssignees([]);
               }}
               style={[
                 styles.choice,
@@ -171,11 +171,14 @@ export default function CreateTaskScreen() {
           multiline
         />
 
+        <DateField label="Due" mode="datetime" value={due} onChange={setDue} />
+
         <Field
-          label="Due date and time (local)"
-          placeholder="YYYY-MM-DDTHH:mm (optional)"
-          value={dueAt}
-          onChangeText={setDueAt}
+          label="Estimated minutes"
+          placeholder="Optional, such as 90"
+          value={estimate}
+          onChangeText={setEstimate}
+          keyboardType="number-pad"
         />
 
         <Text style={styles.label}>Priority</Text>
@@ -196,15 +199,16 @@ export default function CreateTaskScreen() {
         </Card>
 
         <Text style={styles.label}>
-          Assign to a group member
+          Assign to teammates
         </Text>
+        <Text style={styles.hint}>Select everyone sharing this task. Leave them all off to keep it unassigned.</Text>
 
         <Card style={styles.choices}>
           <Text
-            onPress={() => setAssignee('')}
+            onPress={() => setAssignees([])}
             style={[
               styles.choice,
-              !assignee && styles.active,
+              assignees.length === 0 && styles.active,
             ]}
           >
             Unassigned
@@ -213,13 +217,13 @@ export default function CreateTaskScreen() {
           {members.map(member => (
             <Text
               key={member.user_id}
-              onPress={() => setAssignee(member.user_id)}
+              onPress={() => setAssignees((current) => current.includes(member.user_id) ? current.filter((id) => id !== member.user_id) : [...current, member.user_id])}
               style={[
                 styles.choice,
-                assignee === member.user_id && styles.active,
+                assignees.includes(member.user_id) && styles.active,
               ]}
             >
-              {member.profile?.display_name || member.role}
+              {personName(member.profile, member.role)}
             </Text>
           ))}
         </Card>
@@ -251,6 +255,13 @@ const styles = {
     fontWeight: '700',
     marginTop: 4,
     marginBottom: 4,
+  },
+
+  hint: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 8,
   },
 
   choices: {
