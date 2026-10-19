@@ -1,0 +1,10 @@
+```gitignore
+**/node_modules/
+**/.expo/
+**/dist/
+**/web-build/
+**/work/expo-tmp/
+.env
+.env.*
+!.env.example
+```

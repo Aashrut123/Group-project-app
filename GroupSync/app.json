@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "GroupSync",
+    "slug": "groupsync",
+    "scheme": "groupsync",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.groupsync.app" },
+    "android": { "package": "com.groupsync.app" },
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": true }
+  }
+}
