@@ -8,7 +8,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { findConflicts } from '@/lib/planner/conflicts';
 import { isStillScheduled } from '@/lib/planner/dates';
-import { goalSummary, homeLead } from '@/lib/goals';
+import { homeLead } from '@/lib/goals';
 import { completionPercent, isOpenStatus } from '@/lib/planner/status';
 import { formatDate, formatTime } from '@/lib/format';
 import { theme } from '@/lib/theme';
@@ -61,12 +61,6 @@ export default function HomeScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.date}>{today}</Text>
               <Text style={styles.greet}>{firstName ? `Hello, ${firstName}` : 'Hello'}</Text>
-              {goalSummary(profile?.goals, profile?.custom_goal) ? (
-                <Text style={styles.quiet}>{goalSummary(profile?.goals, profile?.custom_goal)}</Text>
-              ) : null}
-              {homeLead(profile?.goals, profile?.planning_style) ? (
-                <Text style={styles.quiet}>{homeLead(profile?.goals, profile?.planning_style)}</Text>
-              ) : null}
               <Text style={styles.quiet}>
                 {openMine.length} open task{openMine.length === 1 ? '' : 's'}
                 {overdue.length ? ` · ${overdue.length} overdue` : ''}
