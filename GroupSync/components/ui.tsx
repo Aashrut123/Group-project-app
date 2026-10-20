@@ -70,12 +70,12 @@ export function Button({
       accessibilityRole="button"
       onPress={onPress}
       disabled={disabled}
-      style={({ pressed }) => [
+      style={({ pressed, hovered }) => [
         styles.button,
         secondary && styles.buttonSecondary,
         light && styles.buttonLight,
         disabled && styles.disabled,
-        pressed && !disabled && styles.pressed,
+        (pressed || hovered) && !disabled && styles.pressed,
       ]}
     >
       <Text
@@ -186,7 +186,7 @@ export function Chip({
       accessibilityRole="button"
       accessibilityState={{ selected: Boolean(active) }}
       onPress={onPress}
-      style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.pressed]}
+      style={({ pressed, hovered }) => [styles.chip, active && styles.chipActive, (pressed || hovered) && styles.pressed]}
     >
       <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
     </Pressable>
@@ -275,6 +275,9 @@ export function ProgressBar({
 const styles = {
   page: {
     flex: 1,
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
     backgroundColor: theme.colors.background,
     paddingHorizontal: 20,
     paddingTop: 16,

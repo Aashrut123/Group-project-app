@@ -81,8 +81,14 @@ export default function CalendarScreen() {
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate();
 
+  const openDue = useMemo(
+    () => tasks.filter((task) => task.status !== 'completed' && task.due_at && (!selected || task.group_id === selected)),
+    [tasks, selected],
+  );
+
   const hasEvent = (day: Date) =>
-    filtered.some(event => overlapsLocalDay(event.starts_at, event.ends_at, day));
+    filtered.some(event => overlapsLocalDay(event.starts_at, event.ends_at, day))
+    || openDue.some((task) => task.due_at && overlapsLocalDay(task.due_at, task.due_at, day));
 
   const conflicts = useMemo(() => findConflicts([
     ...filtered.map((event) => ({
@@ -293,15 +299,24 @@ export default function CalendarScreen() {
                 <Text style={styles.monthHint}>
                   {selectedDay.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                 </Text>
-                {visible.length ? visible.map((event) => (
-                  <Text
-                    key={event.id}
-                    onPress={() => router.push(`/event/${event.id}`)}
-                    style={styles.previewItem}
-                  >
-                    {formatTime(event.starts_at)} · {event.title}
-                  </Text>
-                )) : (
+                {visible.length || openDue.some((task) => task.due_at && overlapsLocalDay(task.due_at, task.due_at, selectedDay)) ? (
+                  <>
+                    {visible.map((event) => (
+                      <Text
+                        key={event.id}
+                        onPress={() => router.push(`/event/${event.id}`)}
+                        style={styles.previewItem}
+                      >
+                        {formatTime(event.starts_at)} · {event.title}
+                      </Text>
+                    ))}
+                    {openDue.filter((task) => task.due_at && overlapsLocalDay(task.due_at, task.due_at, selectedDay)).map((task) => (
+                      <Text key={task.id} onPress={() => router.push(`/task/${task.id}`)} style={styles.previewItem}>
+                        Due · {task.title}
+                      </Text>
+                    ))}
+                  </>
+                ) : (
                   <Text style={styles.monthHint}>Nothing scheduled on this day.</Text>
                 )}
               </View>

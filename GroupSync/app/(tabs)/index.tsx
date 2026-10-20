@@ -8,7 +8,6 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { findConflicts } from '@/lib/planner/conflicts';
 import { isStillScheduled } from '@/lib/planner/dates';
-import { homeLead } from '@/lib/goals';
 import { completionPercent, isOpenStatus } from '@/lib/planner/status';
 import { formatDate, formatTime } from '@/lib/format';
 import { theme } from '@/lib/theme';
@@ -81,23 +80,21 @@ export default function HomeScreen() {
             <Card>
               <Text style={styles.cardTitle}>Start with one project</Text>
               <Text style={styles.quiet}>
-                {homeLead(profile?.goals, profile?.planning_style)
-                  ? `${homeLead(profile?.goals, profile?.planning_style)} Create a project when you are ready. Teammates can join later.`
-                  : 'Create a project, then invite people with a single-use code when you want them. You can work alone until then.'}
+                Create a project when you are ready. You can invite people later, or use GroupSync on your own.
               </Text>
               <Button title="Create a project" onPress={() => router.push('/create-group')} />
             </Card>
           ) : (
-            <Card style={styles.next}>
-              <Text style={styles.kicker}>WORK ON THIS NEXT</Text>
+            <Card>
+              <Text style={styles.kicker}>Work on this next</Text>
               <Text style={styles.nextTitle}>{nextTask?.title || 'Nothing is waiting on you'}</Text>
-              <Text style={styles.nextMeta}>
+              <Text style={styles.quiet}>
                 {nextTask
-                  ? `${nextTask.group?.name || 'Project'} · ${nextTask.due_at ? `due ${formatDate(nextTask.due_at)}` : 'no due date'}`
-                  : 'Open tasks when you want to add the next piece of work.'}
+                  ? `${nextTask.group?.name || 'Project'} · ${nextTask.due_at ? `due ${formatDate(nextTask.due_at)}` : 'no due date'}${overdue.length ? ` · ${overdue.length} overdue` : ''}`
+                  : 'Add a task when you know the next piece of work.'}
               </Text>
               <View style={styles.actions}>
-                {nextTask ? <Button title="Open task" light onPress={() => router.push(`/task/${nextTask.id}`)} /> : null}
+                {nextTask ? <Button title="Open task" onPress={() => router.push(`/task/${nextTask.id}`)} /> : null}
                 <Button title="Build a plan" onPress={() => router.push({ pathname: '/plan', params: { groupId: activeGroups[0]?.id } })} secondary />
               </View>
             </Card>
@@ -182,10 +179,8 @@ const styles = {
   avatar: { width: 44, height: 44, borderRadius: 14, backgroundColor: theme.colors.mint, alignItems: 'center' as const, justifyContent: 'center' as const },
   avatarImage: { width: 44, height: 44, borderRadius: 14 },
   avatarText: { color: theme.colors.primaryDark, fontWeight: '800' as const, fontSize: 18 },
-  next: { backgroundColor: theme.colors.primaryDark, borderColor: theme.colors.primaryDark },
-  kicker: { color: theme.colors.onPrimaryMuted, fontSize: 11, fontWeight: '800' as const, letterSpacing: 0.8 },
-  nextTitle: { color: theme.colors.onPrimary, fontSize: 22, fontWeight: '800' as const, marginTop: 8 },
-  nextMeta: { color: theme.colors.onPrimaryMuted, marginTop: 6, lineHeight: 18 },
+  kicker: { color: theme.colors.primary, fontSize: 12, fontWeight: '800' as const, letterSpacing: 0.3 },
+  nextTitle: { color: theme.colors.ink, fontSize: 22, fontWeight: '800' as const, marginTop: 6 },
   pressed: { opacity: 0.72 },
   actions: { gap: 4 },
   quick: { flexDirection: 'row' as const, gap: 8, marginBottom: 12 },

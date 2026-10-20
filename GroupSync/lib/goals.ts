@@ -90,6 +90,30 @@ export const GOAL_PRESETS: GoalPreset[] = [
       { name: 'Feedback', summary: 'Check what improved and what to practice next.' },
     ],
   },
+  {
+    id: 'volunteer',
+    label: 'Volunteering',
+    detail: 'A community effort with owners and a date.',
+    milestones: ['Agree on the need', 'Line up help', 'Do the work', 'Follow up'],
+    phases: [
+      { name: 'Need', summary: 'Name who the work is for and what done looks like.' },
+      { name: 'Help', summary: 'Find the people and materials required.' },
+      { name: 'Do', summary: 'Carry out the work in small pieces.' },
+      { name: 'Follow up', summary: 'Close the loop and note what to repeat.' },
+    ],
+  },
+  {
+    id: 'work',
+    label: 'Work project',
+    detail: 'A professional outcome with a review.',
+    milestones: ['Define the outcome', 'Do the work', 'Review', 'Hand off'],
+    phases: [
+      { name: 'Define', summary: 'Agree on the outcome and the constraints.' },
+      { name: 'Do', summary: 'Finish the core work in reviewable pieces.' },
+      { name: 'Review', summary: 'Check the result against the outcome.' },
+      { name: 'Hand off', summary: 'Deliver what is ready and list what remains.' },
+    ],
+  },
 ];
 
 export const PLANNING_STYLES: { id: PlanningStyle; label: string; detail: string }[] = [

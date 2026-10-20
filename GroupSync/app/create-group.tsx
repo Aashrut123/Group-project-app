@@ -27,17 +27,22 @@ const colors = [
   '#C59130',
 ];
 
+function firstParam(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] ?? '' : value ?? '';
+}
+
 export default function CreateGroupScreen() {
-  const { fresh } = useLocalSearchParams<{ fresh?: string }>();
+  const params = useLocalSearchParams<{ fresh?: string; name?: string; outcome?: string }>();
+  const fresh = params.fresh;
   const { profile } = useAuth();
   const { refresh } = useWorkspace();
   const suggestions = suggestedMilestones(profile?.goals, profile?.custom_goal);
   const [picked, setPicked] = useState<string[] | null>(null);
   const chosenMilestones = picked ?? suggestions;
 
-  const [name, setName] = useState('');
+  const [name, setName] = useState(firstParam(params.name));
   const [description, setDescription] = useState('');
-  const [outcome, setOutcome] = useState('');
+  const [outcome, setOutcome] = useState(firstParam(params.outcome));
   const [deadline, setDeadline] = useState<Date | null>(null);
   const [color, setColor] = useState(colors[0]);
 
