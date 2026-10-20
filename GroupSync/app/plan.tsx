@@ -3,7 +3,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { DateField } from '@/components/DateField';
-import { Button, Card, Chip, ErrorText, Field, Page, Pill } from '@/components/ui';
+import { Button, Card, Chip, ErrorText, Field, Page, Pill, Section } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { saveReviewedPlan } from '@/features/plans/savePlan';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -180,18 +180,26 @@ export default function PlanScreen() {
 
         {plan ? (
           <View>
+            <Section>Proposed schedule</Section>
             <Card>
-              <Pill color={plan.source === 'ai' ? theme.colors.mint : theme.colors.warningBg}>
+              <Pill tone={plan.source === 'ai' ? 'active' : 'medium'}>
                 {plan.source === 'ai' ? 'AI plan' : 'Built-in planner'}
               </Pill>
               <Text style={styles.summary}>{plan.summary}</Text>
               {plan.notices.map((notice) => (
                 <Text key={notice} style={styles.note}>{notice}</Text>
               ))}
-              <Text style={styles.meta}>{plan.feasible ? 'The planner considers this feasible.' : 'The planner does not consider this feasible as written.'}</Text>
+              <View style={styles.pillGap}>
+                <Pill tone={plan.feasible ? 'done' : 'blocked'}>
+                  {plan.feasible ? 'Feasible' : 'Does not fit'}
+                </Pill>
+              </View>
             </Card>
-            {plan.assumptions.map((item) => <Text key={item} style={styles.note}>Assumption: {item}</Text>)}
+            {plan.assumptions.length ? <Section>Assumptions</Section> : null}
+            {plan.assumptions.map((item) => <Text key={item} style={styles.note}>{item}</Text>)}
+            {plan.risks.length ? <Section>Risks</Section> : null}
             {plan.risks.map((item) => <Text key={item} style={styles.risk}>{item}</Text>)}
+            <Section>Tasks to review</Section>
             {plan.tasks.map((task, index) => (
               <Card key={`${task.title}-${index}`}>
                 <Text style={styles.taskTitle}>{task.title}</Text>
@@ -204,8 +212,8 @@ export default function PlanScreen() {
                 />
               </Card>
             ))}
+            <Section>Meetings</Section>
             <Card>
-              <Text style={styles.taskTitle}>Suggested meetings</Text>
               <Text style={styles.note}>These are proposals. They are not added to the calendar unless you include them.</Text>
               {plan.meetings.map((meeting) => (
                 <Text key={meeting.title} style={styles.note}>{meeting.title}: {meeting.reason}</Text>
@@ -227,11 +235,11 @@ export default function PlanScreen() {
 }
 
 const styles = {
-  lead: { color: theme.colors.muted, lineHeight: 20, marginBottom: 12 },
+  lead: { color: theme.colors.muted, fontSize: theme.type.body, lineHeight: 22, marginBottom: 12 },
   row: { gap: 8, paddingBottom: 12 },
-  summary: { color: theme.colors.ink, fontWeight: '700' as const, marginTop: 8, lineHeight: 20 },
-  note: { color: theme.colors.muted, fontSize: 13, lineHeight: 18, marginTop: 6 },
-  risk: { color: theme.colors.warning, fontSize: 13, lineHeight: 18, marginTop: 6 },
-  meta: { color: theme.colors.ink, marginTop: 8, fontSize: 13 },
-  taskTitle: { color: theme.colors.ink, fontWeight: '800' as const, fontSize: 15 },
+  summary: { color: theme.colors.ink, fontWeight: '700' as const, marginTop: 8, lineHeight: 22, fontSize: theme.type.body },
+  note: { color: theme.colors.muted, fontSize: theme.type.caption, lineHeight: 18, marginTop: 6 },
+  risk: { color: theme.colors.warning, fontSize: theme.type.caption, lineHeight: 18, marginTop: 6 },
+  pillGap: { marginTop: 10 },
+  taskTitle: { color: theme.colors.ink, fontWeight: '800' as const, fontSize: theme.type.body },
 };

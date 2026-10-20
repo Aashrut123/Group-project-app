@@ -13,9 +13,12 @@ import * as Linking from 'expo-linking';
 
 import {
   Button,
+  Chip,
   ErrorText,
   Field,
   Page,
+  TextButton,
+  Title,
 } from '@/components/ui';
 
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -137,37 +140,13 @@ export default function AuthScreen() {
             <Text style={styles.brandName}>GroupSync</Text>
           </View>
 
-          <Text style={styles.headline}>
-            Your group work,
-            {'\n'}
-            in sync.
-          </Text>
-
-          <Text style={styles.copy}>
-            Bring deadlines, meetings and teammates together in one
-            calm workspace.
-          </Text>
+          <Title subtitle="Bring deadlines, meetings, and teammates together in one calm workspace.">
+            Your group work, in sync.
+          </Title>
 
           <View style={styles.switcher}>
-            <Text
-              onPress={() => setMode('login')}
-              style={[
-                styles.switchText,
-                mode === 'login' && styles.switchActive,
-              ]}
-            >
-              Log in
-            </Text>
-
-            <Text
-              onPress={() => setMode('signup')}
-              style={[
-                styles.switchText,
-                mode === 'signup' && styles.switchActive,
-              ]}
-            >
-              Create account
-            </Text>
+            <Chip label="Log in" active={mode === 'login'} onPress={() => setMode('login')} />
+            <Chip label="Create account" active={mode === 'signup'} onPress={() => setMode('signup')} />
           </View>
 
           {mode === 'signup' && (
@@ -211,14 +190,11 @@ export default function AuthScreen() {
             disabled={busy}
           />
 
-          {mode === 'login' && (
-            <Text
-              onPress={() => void resetPassword()}
-              style={styles.reset}
-            >
-              Forgot password?
-            </Text>
-          )}
+          {mode === 'login' ? (
+            <View style={styles.resetWrap}>
+              <TextButton title="Forgot password?" onPress={() => void resetPassword()} />
+            </View>
+          ) : null}
 
           <Text style={styles.foot}>
             Secure group spaces powered by Supabase.
@@ -255,7 +231,7 @@ const styles = {
   },
 
   markText: {
-    color: 'white',
+    color: theme.colors.onPrimary,
     fontSize: 20,
     fontWeight: '900',
   },
@@ -266,47 +242,15 @@ const styles = {
     fontWeight: '800',
   },
 
-  headline: {
-    color: theme.colors.ink,
-    fontSize: 34,
-    lineHeight: 39,
-    letterSpacing: -1,
-    fontWeight: '800',
-  },
-
-  copy: {
-    color: theme.colors.muted,
-    fontSize: 15,
-    lineHeight: 22,
-    marginTop: 9,
-    marginBottom: 26,
-  },
-
   switcher: {
     flexDirection: 'row',
-    gap: 22,
-    borderBottomWidth: 1,
-    borderColor: theme.colors.line,
-    paddingBottom: 10,
-    marginBottom: 17,
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
   },
 
-  switchText: {
-    color: theme.colors.faint,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-
-  switchActive: {
-    color: theme.colors.primary,
-    textDecorationLine: 'underline',
-  },
-
-  reset: {
-    color: theme.colors.primary,
-    textAlign: 'center',
-    fontWeight: '700',
-    marginTop: 15,
+  resetWrap: {
+    alignItems: 'center',
   },
 
   foot: {

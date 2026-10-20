@@ -322,7 +322,7 @@ const styles = {
   },
 
   buttonText: {
-    color: 'white',
+    color: theme.colors.onPrimary,
     fontWeight: '700',
     fontSize: 15,
   },
@@ -362,7 +362,7 @@ const styles = {
   },
 
   input: {
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.surface,
     borderColor: theme.colors.line,
     borderWidth: 1,
     borderRadius: 11,
@@ -473,6 +473,6 @@ const styles = {
     fontWeight: '700',
   },
   chipTextActive: {
-    color: '#FFFFFF',
+    color: theme.colors.onPrimary,
   },
 } as const;
