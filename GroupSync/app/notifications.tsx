@@ -34,7 +34,7 @@ export default function NotificationsScreen() {
 
   return (
     <Page>
-      <ScrollView contentContainerStyle={{ paddingBottom: 28 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
         <Text style={styles.lead}>This list stays inside GroupSync. Phone alerts for due tasks and upcoming meetings are turned on from Profile.</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {notifications.length ? notifications.map((item) => (

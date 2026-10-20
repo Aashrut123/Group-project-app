@@ -77,7 +77,7 @@ export default function OnboardingScreen() {
 
   return (
     <Page>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 28 }}>
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 28 }}>
         <View style={styles.progress}>
           {steps.map((value) => (
             <View key={value} style={[styles.bar, value <= step && styles.barOn]} />

@@ -133,6 +133,7 @@ export default function CreateTaskScreen() {
   return (
     <Page>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 28 }}
       >

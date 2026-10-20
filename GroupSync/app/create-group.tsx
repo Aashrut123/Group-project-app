@@ -104,7 +104,7 @@ export default function CreateGroupScreen() {
 
   return (
     <Page>
-      <ScrollView keyboardShouldPersistTaps="handled">
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <Field
           label="Group name"
           placeholder="e.g. AP Physics project"

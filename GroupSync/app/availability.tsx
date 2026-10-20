@@ -117,7 +117,7 @@ export default function AvailabilityScreen() {
 
   return (
     <Page>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 28 }}>
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 28 }}>
         <Text style={styles.lead}>The planner uses these hours and away dates. It does not sync them to another calendar.</Text>
         {error ? <ErrorText>{error}</ErrorText> : null}
         <Text style={styles.heading}>Weekly windows</Text>

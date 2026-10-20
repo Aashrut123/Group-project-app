@@ -150,7 +150,7 @@ export default function PlanScreen() {
 
   return (
     <Page>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
         <Text style={styles.lead}>
           Describe the project. You will review every task before anything is saved.
         </Text>

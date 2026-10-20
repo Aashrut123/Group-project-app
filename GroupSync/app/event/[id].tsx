@@ -215,7 +215,7 @@ export default function EventDetailScreen() {
 
   return (
     <Page>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
         <View style={styles.head}>
           <View style={{ flex: 1 }}>
             <Text style={styles.meta}>

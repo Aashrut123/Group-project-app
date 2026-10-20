@@ -122,6 +122,7 @@ export default function CreateEventScreen() {
   return (
     <Page>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 30 }}
       >

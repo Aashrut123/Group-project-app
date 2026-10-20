@@ -158,7 +158,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <Page>
-        <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
           <Title subtitle="Your account and preferences">
             Profile & settings
           </Title>

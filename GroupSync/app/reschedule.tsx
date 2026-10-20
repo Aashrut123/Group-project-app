@@ -113,7 +113,7 @@ export default function RescheduleScreen() {
 
   return (
     <Page>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 28 }}>
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 28 }}>
         <Text style={styles.lead}>Preview a new set of task deadlines. Nothing moves until you accept it.</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
           {groups.filter((group) => group.status !== 'archived').map((group) => (
