@@ -373,13 +373,20 @@ export default function GroupDetailScreen() {
           </View>
         </View>
 
-        <ProgressBar
-          value={progress}
-          color={group?.color || theme.colors.primary}
-          label={`${progress}% complete${group?.deadline ? ` · deadline ${formatDate(group.deadline)}` : ''}${group?.outcome ? ` · ${group.outcome}` : ''}`}
-        />
+        <View style={styles.progress}>
+          <ProgressBar
+            value={progress}
+            color={group?.color || theme.colors.primary}
+            label={`${progress}% complete${group?.deadline ? ` · deadline ${formatDate(group.deadline)}` : ''}${group?.outcome ? ` · ${group.outcome}` : ''}`}
+          />
+        </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sections}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.sectionScroll}
+          contentContainerStyle={styles.sections}
+        >
           {([
             ['overview', 'Overview'],
             ['tasks', 'Tasks'],
@@ -698,7 +705,16 @@ const styles = {
   },
   sections: {
     gap: 8,
-    paddingBottom: 12,
+    alignItems: 'center',
+    paddingRight: 8,
+  },
+  progress: {
+    marginBottom: 14,
+  },
+  sectionScroll: {
+    height: 48,
+    marginBottom: 8,
+    flexGrow: 0,
   },
   section: {
     flexDirection: 'row',
