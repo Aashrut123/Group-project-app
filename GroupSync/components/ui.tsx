@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 import {
+  AccessibilityInfo,
   ActivityIndicator,
+  Animated,
   Pressable,
   Text,
   TextInput,
@@ -58,35 +60,45 @@ export function Button({
   secondary,
   light,
   disabled,
+  busy,
 }: {
   title: string;
   onPress: () => void;
   secondary?: boolean;
   light?: boolean;
   disabled?: boolean;
+  busy?: boolean;
 }) {
+  const blocked = Boolean(disabled || busy);
   return (
     <Pressable
       accessibilityRole="button"
-      onPress={onPress}
-      disabled={disabled}
-      style={({ pressed, hovered }) => [
+      accessibilityState={{ disabled: blocked, busy: Boolean(busy) }}
+      onPress={() => {
+        if (!blocked) onPress();
+      }}
+      disabled={blocked}
+      style={({ pressed }) => [
         styles.button,
         secondary && styles.buttonSecondary,
         light && styles.buttonLight,
-        disabled && styles.disabled,
-        (pressed || hovered) && !disabled && styles.pressed,
+        pressed && !blocked && (secondary || light ? styles.buttonSecondaryPressed : styles.buttonPressed),
+        blocked && styles.disabled,
       ]}
     >
-      <Text
-        style={[
-          styles.buttonText,
-          secondary && styles.buttonSecondaryText,
-          light && styles.buttonLightText,
-        ]}
-      >
-        {title}
-      </Text>
+      {busy ? (
+        <ActivityIndicator color={secondary || light ? theme.colors.primaryDark : theme.colors.onPrimary} />
+      ) : (
+        <Text
+          style={[
+            styles.buttonText,
+            secondary && styles.buttonSecondaryText,
+            light && styles.buttonLightText,
+          ]}
+        >
+          {title}
+        </Text>
+      )}
     </Pressable>
   );
 }
@@ -103,7 +115,7 @@ export function TextButton({
       accessibilityRole="button"
       hitSlop={8}
       onPress={onPress}
-      style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.textButton, pressed && styles.textButtonPressed]}
     >
       <Text style={styles.textButtonLabel}>{title}</Text>
     </Pressable>
@@ -112,20 +124,34 @@ export function TextButton({
 
 export function Field({
   label,
+  onFocus,
+  onBlur,
+  style,
   ...props
 }: TextInputProps & { label: string }) {
+  const [focused, setFocused] = useState(false);
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
 
       <TextInput
         placeholderTextColor={theme.colors.faint}
+        onFocus={(event) => {
+          setFocused(true);
+          onFocus?.(event);
+        }}
+        onBlur={(event) => {
+          setFocused(false);
+          onBlur?.(event);
+        }}
         style={[
           styles.input,
           props.multiline && {
             minHeight: 92,
             textAlignVertical: 'top',
           },
+          focused && styles.inputFocused,
+          style,
         ]}
         {...props}
       />
@@ -186,7 +212,11 @@ export function Chip({
       accessibilityRole="button"
       accessibilityState={{ selected: Boolean(active) }}
       onPress={onPress}
-      style={({ pressed, hovered }) => [styles.chip, active && styles.chipActive, (pressed || hovered) && styles.pressed]}
+      style={({ pressed }) => [
+        styles.chip,
+        active && styles.chipActive,
+        pressed && !active && styles.chipPressed,
+      ]}
     >
       <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
     </Pressable>
@@ -248,6 +278,39 @@ export function Section({ children }: { children: React.ReactNode }) {
   return <Text style={styles.section}>{children}</Text>;
 }
 
+export function SelectCard({
+  title,
+  detail,
+  selected,
+  onPress,
+}: {
+  title: string;
+  detail?: string;
+  selected?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: Boolean(selected) }}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.selectCard,
+        selected && styles.selectCardOn,
+        pressed && styles.selectCardPressed,
+      ]}
+    >
+      <View style={styles.selectMark}>
+        <View style={[styles.radio, selected && styles.radioOn]} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.selectTitle}>{title}</Text>
+        {detail ? <Text style={styles.selectDetail}>{detail}</Text> : null}
+      </View>
+    </Pressable>
+  );
+}
+
 export function ProgressBar({
   value,
   label,
@@ -258,6 +321,38 @@ export function ProgressBar({
   color?: string;
 }) {
   const clamped = Math.max(0, Math.min(100, Math.round(value)));
+  const [motion] = useState(() => new Animated.Value(clamped));
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (active) setReduceMotion(enabled);
+    });
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      motion.setValue(clamped);
+      return;
+    }
+    Animated.timing(motion, {
+      toValue: clamped,
+      duration: 220,
+      useNativeDriver: false,
+    }).start();
+  }, [clamped, motion, reduceMotion]);
+
+  const width = motion.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
+
   return (
     <View style={styles.progressWrap}>
       {label ? <Text style={styles.meta}>{label}</Text> : null}
@@ -266,7 +361,7 @@ export function ProgressBar({
         accessibilityValue={{ min: 0, max: 100, now: clamped }}
         style={styles.track}
       >
-        <View style={[styles.fill, { width: `${clamped}%`, backgroundColor: color || theme.colors.primary }]} />
+        <Animated.View style={[styles.fill, { width, backgroundColor: color || theme.colors.primary }]} />
       </View>
     </View>
   );
@@ -316,14 +411,24 @@ const styles = {
     paddingHorizontal: 16,
     paddingVertical: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
     marginTop: 8,
   },
 
+  buttonPressed: {
+    backgroundColor: theme.colors.primaryDark,
+  },
   buttonSecondary: {
     backgroundColor: theme.colors.mint,
   },
+  buttonSecondaryPressed: {
+    backgroundColor: '#D5EBE6',
+  },
   buttonLight: {
     backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
   },
 
   buttonText: {
@@ -341,17 +446,19 @@ const styles = {
   disabled: {
     opacity: 0.55,
   },
-  pressed: {
-    opacity: 0.72,
-  },
   textButton: {
-    marginTop: 8,
+    marginTop: 4,
     minHeight: 44,
     justifyContent: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 4,
+  },
+  textButtonPressed: {
+    opacity: 0.6,
   },
   textButtonLabel: {
     color: theme.colors.primary,
-    fontWeight: '800',
+    fontWeight: '700',
     fontSize: 15,
   },
 
@@ -360,9 +467,9 @@ const styles = {
   },
 
   label: {
-    color: theme.colors.ink,
+    color: theme.colors.muted,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     marginBottom: 6,
   },
 
@@ -375,6 +482,9 @@ const styles = {
     paddingVertical: 12,
     color: theme.colors.ink,
     fontSize: 15,
+  },
+  inputFocused: {
+    borderColor: theme.colors.primary,
   },
 
   empty: {
@@ -392,8 +502,9 @@ const styles = {
   section: {
     color: theme.colors.ink,
     fontSize: theme.type.section,
-    fontWeight: '800',
-    marginTop: 8,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    marginTop: 16,
     marginBottom: 8,
   },
   meta: {
@@ -456,7 +567,7 @@ const styles = {
   pillText: {
     color: theme.colors.primaryDark,
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   chip: {
     borderRadius: 999,
@@ -468,9 +579,57 @@ const styles = {
     minHeight: 40,
     justifyContent: 'center',
   },
+  chipPressed: {
+    backgroundColor: theme.colors.mint,
+    borderColor: theme.colors.primary,
+  },
   chipActive: {
     backgroundColor: theme.colors.primary,
     borderColor: theme.colors.primary,
+  },
+  selectCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    borderRadius: theme.radius.md,
+    padding: 14,
+    marginBottom: 10,
+  },
+  selectCardOn: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.mint,
+  },
+  selectCardPressed: {
+    borderColor: theme.colors.primaryDark,
+  },
+  selectMark: {
+    paddingTop: 2,
+  },
+  radio: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: theme.colors.faint,
+    backgroundColor: theme.colors.surface,
+  },
+  radioOn: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary,
+  },
+  selectTitle: {
+    color: theme.colors.ink,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  selectDetail: {
+    color: theme.colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
   },
   chipText: {
     color: theme.colors.muted,

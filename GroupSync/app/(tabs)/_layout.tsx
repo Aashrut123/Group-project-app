@@ -1,5 +1,5 @@
 import { Redirect, Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { Loading } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -52,16 +52,27 @@ export default function TabLayout() {
           fontSize: 10,
         },
 
-        tabBarIcon: ({ color }) => (
-          <Text
+        tabBarIcon: ({ color, focused }) => (
+          <View
             style={{
-              color,
-              fontSize: 20,
-              fontWeight: '800',
+              minWidth: 40,
+              height: 28,
+              borderRadius: 10,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: focused ? theme.colors.mint : 'transparent',
             }}
           >
-            {glyph[route.name] || '·'}
-          </Text>
+            <Text
+              style={{
+                color,
+                fontSize: 18,
+                fontWeight: focused ? '800' : '600',
+              }}
+            >
+              {glyph[route.name] || '·'}
+            </Text>
+          </View>
         ),
       })}
     >

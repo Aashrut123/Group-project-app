@@ -79,7 +79,12 @@ export default function GroupsScreen() {
             groups.filter((group) => group.status !== 'archived').map(group => {
               const percent = completionPercent(tasks.filter((task) => task.group_id === group.id));
               return (
-              <Pressable key={group.id} accessibilityRole="button" onPress={() => router.push(`/group/${group.id}`)}>
+              <Pressable
+                key={group.id}
+                accessibilityRole="button"
+                onPress={() => router.push(`/group/${group.id}`)}
+                style={({ pressed }) => [pressed && styles.pressed]}
+              >
               <Card style={styles.group}>
                 <View
                   style={[
@@ -142,9 +147,9 @@ export default function GroupsScreen() {
             ) : null}
 
             <Button
-              title={working ? 'Joining…' : 'Join group'}
+              title="Join group"
               onPress={() => void join()}
-              disabled={working}
+              busy={working}
               secondary
             />
           </Card>
@@ -169,9 +174,12 @@ const styles = {
     height: 46,
     borderRadius: 8,
   },
+  pressed: {
+    opacity: 0.82,
+  },
   name: {
     color: theme.colors.ink,
-    fontWeight: '800',
+    fontWeight: '700',
     fontSize: 16,
   },
   desc: {

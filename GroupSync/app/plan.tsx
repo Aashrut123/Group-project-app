@@ -28,18 +28,19 @@ export default function PlanScreen() {
   const [plan, setPlan] = useState<GeneratedPlan | null>(null);
   const [included, setIncluded] = useState<boolean[]>([]);
   const [includeMeetings, setIncludeMeetings] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<'build' | 'save' | null>(null);
   const [error, setError] = useState('');
   const [savedNote, setSavedNote] = useState('');
 
   const selectedGroup = groups.find((group) => group.id === groupId);
 
   const build = async () => {
+    if (busy) return;
     if (!groupId) {
       setError('Choose a project first.');
       return;
     }
-    setBusy(true);
+    setBusy('build');
     setError('');
     setSavedNote('');
     try {
@@ -112,13 +113,13 @@ export default function PlanScreen() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not build a plan.');
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
 
   const save = async () => {
-    if (!plan || !groupId) return;
-    setBusy(true);
+    if (!plan || !groupId || busy) return;
+    setBusy('save');
     setError('');
     const chosen = plan.tasks.filter((_, index) => included[index]);
     const result = await saveReviewedPlan({
@@ -135,7 +136,7 @@ export default function PlanScreen() {
           milestones,
         },
     });
-    setBusy(false);
+    setBusy(null);
     if (result.error) {
       setError(result.error);
       return;
@@ -176,15 +177,20 @@ export default function PlanScreen() {
         <Field label="Constraints and blockers" value={constraints} onChangeText={setConstraints} multiline placeholder="Exams, parts on order, skills the team does not have" />
         <Field label="Milestones, one per line" value={milestones} onChangeText={setMilestones} multiline placeholder={'Prototype chassis | 2026-11-10\nDemo video'} />
         {error ? <ErrorText>{error}</ErrorText> : null}
-        <Button title={busy ? 'Working…' : 'Build plan'} onPress={() => void build()} disabled={busy} />
+        <Button title={plan ? 'Build again' : 'Build plan'} onPress={() => void build()} busy={busy === 'build'} disabled={busy === 'save'} />
 
         {plan ? (
           <View>
             <Section>Proposed schedule</Section>
-            <Card>
+            <Card style={plan.source === 'ai' ? styles.aiCard : styles.builtinCard}>
               <Pill tone={plan.source === 'ai' ? 'active' : 'medium'}>
-                {plan.source === 'ai' ? 'AI plan' : 'Built-in planner'}
+                {plan.source === 'ai' ? 'Remote planner' : 'Built-in planner'}
               </Pill>
+              <Text style={styles.sourceNote}>
+                {plan.source === 'ai'
+                  ? 'This draft came from the remote planner. Nothing is saved until you approve it.'
+                  : 'This draft came from the built-in planner. Nothing is saved until you approve it.'}
+              </Text>
               <Text style={styles.summary}>{plan.summary}</Text>
               {plan.notices.map((notice) => (
                 <Text key={notice} style={styles.note}>{notice}</Text>
@@ -200,13 +206,14 @@ export default function PlanScreen() {
             {plan.risks.length ? <Section>Risks</Section> : null}
             {plan.risks.map((item) => <Text key={item} style={styles.risk}>{item}</Text>)}
             <Section>Tasks to review</Section>
+            <Text style={styles.lead}>Included tasks are saved. Skipped tasks stay off the project.</Text>
             {plan.tasks.map((task, index) => (
-              <Card key={`${task.title}-${index}`}>
+              <Card key={`${task.title}-${index}`} style={included[index] ? styles.keep : styles.skip}>
                 <Text style={styles.taskTitle}>{task.title}</Text>
                 <Text style={styles.note}>{task.phase} · {task.assigneeName} · {task.estimatedMinutes} min · due {task.dueDate}</Text>
-                <Text style={styles.note}>{task.microGoals.join(' · ')}</Text>
+                {task.microGoals.length ? <Text style={styles.note}>{task.microGoals.join(' · ')}</Text> : null}
                 <Chip
-                  label={included[index] ? 'Will save' : 'Skip'}
+                  label={included[index] ? 'Included' : 'Skipped'}
                   active={Boolean(included[index])}
                   onPress={() => setIncluded((current) => current.map((value, itemIndex) => itemIndex === index ? !value : value))}
                 />
@@ -220,7 +227,7 @@ export default function PlanScreen() {
               ))}
               <Chip label={includeMeetings ? 'Include meetings' : 'Leave meetings off'} active={includeMeetings} onPress={() => setIncludeMeetings((value) => !value)} />
             </Card>
-            <Button title={busy ? 'Saving…' : 'Save reviewed plan'} onPress={() => void save()} disabled={busy} />
+            <Button title="Save reviewed plan" onPress={() => void save()} busy={busy === 'save'} disabled={busy === 'build'} />
           </View>
         ) : null}
         {savedNote ? (
@@ -241,5 +248,10 @@ const styles = {
   note: { color: theme.colors.muted, fontSize: theme.type.caption, lineHeight: 18, marginTop: 6 },
   risk: { color: theme.colors.warning, fontSize: theme.type.caption, lineHeight: 18, marginTop: 6 },
   pillGap: { marginTop: 10 },
-  taskTitle: { color: theme.colors.ink, fontWeight: '800' as const, fontSize: theme.type.body },
+  taskTitle: { color: theme.colors.ink, fontWeight: '700' as const, fontSize: theme.type.body },
+  sourceNote: { color: theme.colors.muted, fontSize: theme.type.caption, lineHeight: 18, marginTop: 8 },
+  aiCard: { borderColor: theme.colors.blue },
+  builtinCard: { borderColor: theme.colors.primary },
+  keep: { borderLeftWidth: 3, borderLeftColor: theme.colors.primary },
+  skip: { opacity: 0.72 },
 };

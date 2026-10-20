@@ -86,10 +86,6 @@ export default function CalendarScreen() {
     [tasks, selected],
   );
 
-  const hasEvent = (day: Date) =>
-    filtered.some(event => overlapsLocalDay(event.starts_at, event.ends_at, day))
-    || openDue.some((task) => task.due_at && overlapsLocalDay(task.due_at, task.due_at, day));
-
   const conflicts = useMemo(() => findConflicts([
     ...filtered.map((event) => ({
       id: event.id,
@@ -239,11 +235,14 @@ export default function CalendarScreen() {
                       day
                     );
                     const chosen = valid && sameDay(date, selectedDay);
+                    const hasMeeting = valid && filtered.some((event) => overlapsLocalDay(event.starts_at, event.ends_at, date));
+                    const hasDeadline = valid && openDue.some((task) => task.due_at && overlapsLocalDay(task.due_at, task.due_at, date));
 
                     return (
                       <Pressable
                         key={index}
                         accessibilityRole="button"
+                        accessibilityState={{ selected: chosen }}
                         accessibilityLabel={valid ? date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : undefined}
                         disabled={!valid}
                         onPress={() => {
@@ -257,8 +256,14 @@ export default function CalendarScreen() {
                         ]}
                       >
                         <Text style={[styles.dayText, chosen && styles.dayTextSelected]}>
-                          {valid ? `${day}${hasEvent(date) ? ' •' : ''}` : ''}
+                          {valid ? day : ''}
                         </Text>
+                        {hasMeeting || hasDeadline ? (
+                          <View style={styles.dots}>
+                            {hasMeeting ? <View style={[styles.dot, chosen && styles.dotOn]} /> : null}
+                            {hasDeadline ? <View style={[styles.dot, styles.dotDeadline]} /> : null}
+                          </View>
+                        ) : null}
                       </Pressable>
                     );
                   })}
@@ -268,10 +273,13 @@ export default function CalendarScreen() {
               <View style={styles.grid}>
                 {weekDays.map((day, index) => {
                   const chosen = sameDay(day, selectedDay);
+                  const hasMeeting = filtered.some((event) => overlapsLocalDay(event.starts_at, event.ends_at, day));
+                  const hasDeadline = openDue.some((task) => task.due_at && overlapsLocalDay(task.due_at, task.due_at, day));
                   return (
                     <Pressable
                       key={index}
                       accessibilityRole="button"
+                      accessibilityState={{ selected: chosen }}
                       onPress={() => {
                         setSelectedDay(day);
                         setAnchor(day);
@@ -279,11 +287,15 @@ export default function CalendarScreen() {
                       style={[styles.weekDay, chosen && styles.daySelected]}
                     >
                       <Text style={[styles.dayText, chosen && styles.dayTextSelected]}>
-                        {day.toLocaleDateString(undefined, { weekday: 'short' })}
-                        {'\n'}
-                        {day.getDate()}
-                        {hasEvent(day) ? ' •' : ''}
+                        {day.toLocaleDateString(undefined, { weekday: 'narrow' })}
                       </Text>
+                      <Text style={[styles.dayText, chosen && styles.dayTextSelected]}>{day.getDate()}</Text>
+                      {hasMeeting || hasDeadline ? (
+                        <View style={styles.dots}>
+                          {hasMeeting ? <View style={[styles.dot, chosen && styles.dotOn]} /> : null}
+                          {hasDeadline ? <View style={[styles.dot, styles.dotDeadline]} /> : null}
+                        </View>
+                      ) : null}
                     </Pressable>
                   );
                 })}
@@ -307,7 +319,7 @@ export default function CalendarScreen() {
                         onPress={() => router.push(`/event/${event.id}`)}
                         style={styles.previewItem}
                       >
-                        {formatTime(event.starts_at)} · {event.title}
+                        {event.kind === 'meeting' ? 'Meeting' : event.kind === 'deadline' ? 'Deadline' : 'Event'} · {formatTime(event.starts_at)} · {event.title}
                       </Text>
                     ))}
                     {openDue.filter((task) => task.due_at && overlapsLocalDay(task.due_at, task.due_at, selectedDay)).map((task) => (
@@ -358,7 +370,7 @@ export default function CalendarScreen() {
                 <Text onPress={() => router.push(`/task/${task.id}`)} style={styles.eventTitle}>{task.title}</Text>
                 <Text style={styles.eventMeta}>Task deadline · {task.group?.name || 'Personal'} · {formatDate(task.due_at)}</Text>
               </View>
-              <Pill>deadline</Pill>
+              <Pill tone="medium">Deadline</Pill>
             </Card>
           ))}
 
@@ -428,7 +440,9 @@ export default function CalendarScreen() {
                   </Text>
 
                   <View style={{ marginTop: 8 }}>
-                    <Pill>{event.kind}</Pill>
+                    <Pill tone={event.kind === 'meeting' ? 'active' : event.kind === 'deadline' ? 'medium' : 'neutral'}>
+                      {event.kind === 'meeting' ? 'Meeting' : event.kind === 'deadline' ? 'Deadline' : event.kind}
+                    </Pill>
                   </View>
                 </View>
               </Card>
@@ -521,10 +535,28 @@ const styles = {
   },
   day: {
     width: '14.285%',
-    height: 36,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 18,
+    borderRadius: 12,
+  },
+  dots: {
+    flexDirection: 'row',
+    gap: 3,
+    height: 6,
+    marginTop: 2,
+  },
+  dot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#D7EBE7',
+  },
+  dotOn: {
+    backgroundColor: theme.colors.primary,
+  },
+  dotDeadline: {
+    backgroundColor: theme.colors.gold,
   },
   dayText: {
     color: 'white',
@@ -539,7 +571,7 @@ const styles = {
     opacity: 0,
   },
   daySelected: {
-    backgroundColor: theme.colors.gold,
+    backgroundColor: 'white',
   },
   dayPreview: {
     marginTop: 8,

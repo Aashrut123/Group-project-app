@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
-import { ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { LayoutAnimation, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { Button, Card, Chip, ErrorText, Field, Page, Pill } from '@/components/ui';
+import { Button, Card, Chip, ErrorText, Field, Page, Pill, ProgressBar, SelectCard, TextButton } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { GOAL_PRESETS, PLANNING_STYLES, goalSummary, type PlanningStyle } from '@/lib/goals';
 import { supabase } from '@/lib/supabase';
@@ -199,13 +199,19 @@ export default function OnboardingScreen() {
             </View>
             <Text style={styles.exampleLabel}>Example, not your data</Text>
             <Card>
-              <Text style={styles.previewKicker}>Project</Text>
-              <Text style={styles.previewTitle}>Ship the demo</Text>
-              <Text style={styles.note}>Milestone · Working version</Text>
-              <Text style={styles.previewTask}>Compare the core flow</Text>
-              <Text style={styles.previewTask}>Record a two-minute walkthrough</Text>
+              <Text style={styles.previewKicker}>Ship the demo</Text>
+              <Text style={styles.note}>Working version · 1 of 2 tasks finished</Text>
+              <ProgressBar value={50} label="Halfway through the milestone" />
+              <View style={styles.previewTaskRow}>
+                <Text style={styles.previewDone}>✓</Text>
+                <Text style={styles.previewDoneText}>Compare the core flow</Text>
+              </View>
+              <View style={styles.previewTaskRow}>
+                <Text style={styles.previewOpen}>○</Text>
+                <Text style={styles.previewTask}>Record a two-minute walkthrough</Text>
+              </View>
               <View style={styles.previewPill}>
-                <Pill>Next · Record a two-minute walkthrough</Pill>
+                <Pill tone="active">Next · Record a two-minute walkthrough</Pill>
               </View>
             </Card>
             <Text style={styles.note}>
@@ -241,7 +247,7 @@ export default function OnboardingScreen() {
             {error ? <ErrorText>{error}</ErrorText> : null}
             <Button title="Continue" onPress={() => { setError(''); setStep(editing ? 3 : 2); }} />
             {editing ? null : <Button title="Skip for now" onPress={() => { setError(''); setStep(2); }} secondary />}
-            {editing ? null : <Button title="Back" onPress={() => setStep(0)} secondary />}
+            {editing ? null : <TextButton title="Back" onPress={() => setStep(0)} />}
           </>
         ) : null}
 
@@ -250,10 +256,17 @@ export default function OnboardingScreen() {
             <Text style={styles.title}>How do you want to start?</Text>
             <Text style={styles.body}>Pick one. You can create or join a project later if you explore first.</Text>
             {PATHS.map((item) => (
-              <Card key={item.id} style={path === item.id ? styles.pathOn : undefined}>
-                <Text style={styles.featureTitle} onPress={() => { setPath(item.id); setError(''); }}>{item.title}</Text>
-                <Text style={styles.note} onPress={() => { setPath(item.id); setError(''); }}>{item.detail}</Text>
-              </Card>
+              <SelectCard
+                key={item.id}
+                title={item.title}
+                detail={item.detail}
+                selected={path === item.id}
+                onPress={() => {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setPath(item.id);
+                  setError('');
+                }}
+              />
             ))}
             {path === 'start' ? (
               <>
@@ -277,7 +290,7 @@ export default function OnboardingScreen() {
               setError('');
               setStep(3);
             }} />
-            <Button title="Back" onPress={() => setStep(1)} secondary />
+            <TextButton title="Back" onPress={() => setStep(1)} />
           </>
         ) : null}
 
@@ -313,8 +326,8 @@ export default function OnboardingScreen() {
               ))}
             </View>
             {error ? <ErrorText>{error}</ErrorText> : null}
-            <Button title={busy ? 'Saving…' : editing ? 'Save goals' : 'Finish'} onPress={() => void finish()} disabled={busy} />
-            <Button title="Back" onPress={() => setStep(editing ? 1 : 2)} secondary />
+            <Button title={editing ? 'Save goals' : 'Finish'} onPress={() => void finish()} busy={busy} />
+            <TextButton title="Back" onPress={() => setStep(editing ? 1 : 2)} />
           </>
         ) : null}
       </ScrollView>
@@ -336,18 +349,19 @@ const styles = {
   features: { gap: 8, marginBottom: 16 },
   featuresWide: { flexDirection: 'row' as const, flexWrap: 'wrap' as const },
   feature: {
-    borderWidth: 1,
-    borderColor: theme.colors.line,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.surface,
-    padding: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.primary,
+    paddingLeft: 12,
+    paddingVertical: 6,
   },
   featureWide: { width: '48%' as const },
-  featureTitle: { color: theme.colors.ink, fontSize: 15, fontWeight: '800' as const, marginBottom: 4 },
+  featureTitle: { color: theme.colors.ink, fontSize: 15, fontWeight: '700' as const, marginBottom: 4 },
   exampleLabel: { color: theme.colors.faint, fontSize: 12, fontWeight: '700' as const, marginBottom: 8 },
-  previewKicker: { color: theme.colors.primary, fontSize: 12, fontWeight: '800' as const },
-  previewTitle: { color: theme.colors.ink, fontSize: 18, fontWeight: '800' as const, marginTop: 4 },
-  previewTask: { color: theme.colors.ink, marginTop: 8 },
+  previewKicker: { color: theme.colors.ink, fontSize: 18, fontWeight: '700' as const, letterSpacing: -0.3 },
+  previewTaskRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, marginTop: 10 },
+  previewDone: { color: theme.colors.primary, fontWeight: '700' as const, width: 16 },
+  previewDoneText: { color: theme.colors.faint, textDecorationLine: 'line-through' as const, flex: 1 },
+  previewOpen: { color: theme.colors.primary, fontWeight: '700' as const, width: 16 },
+  previewTask: { color: theme.colors.ink, flex: 1 },
   previewPill: { marginTop: 12 },
-  pathOn: { borderColor: theme.colors.primary },
 };

@@ -59,6 +59,7 @@ export default function GroupDetailScreen() {
   const [outcome, setOutcome] = useState('');
   const [deadline, setDeadline] = useState<Date | null>(null);
   const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [openMilestoneId, setOpenMilestoneId] = useState<string | null>(null);
   const [milestoneTitle, setMilestoneTitle] = useState('');
   const [milestoneDate, setMilestoneDate] = useState<Date | null>(null);
 
@@ -626,51 +627,64 @@ export default function GroupDetailScreen() {
             {milestones.length ? milestones.map((milestone, index) => {
               const linked = projectTasks.filter((task) => task.milestone_id === milestone.id);
               const stats = milestoneTaskProgress(linked);
+              const open = openMilestoneId === milestone.id;
               return (
               <Card key={milestone.id}>
-                <Text style={styles.itemTitle}>{milestone.title}</Text>
+                <Text
+                  accessibilityRole="button"
+                  style={styles.itemTitle}
+                  onPress={() => setOpenMilestoneId(open ? null : milestone.id)}
+                >
+                  {open ? '▾' : '▸'} {milestone.title}
+                </Text>
                 <Text style={styles.muted}>
                   {milestone.due_on ? formatDate(milestone.due_on) : 'No date'}
                   {milestone.completed_at ? ' · marked done' : ''}
                   {stats.total ? ` · ${stats.done} of ${stats.total} tasks finished` : ' · no tasks linked yet'}
                 </Text>
                 {stats.total ? <ProgressBar value={stats.percent} color={group?.color || theme.colors.primary} /> : null}
-                {stats.total > 0 && stats.done === stats.total && !milestone.completed_at ? (
-                  <Text style={styles.muted}>All linked tasks are finished. Mark the milestone done when you are ready.</Text>
-                ) : null}
-                {linked.map((task) => (
-                  <Text key={task.id} style={styles.link} onPress={() => router.push(`/task/${task.id}`)}>
-                    {taskStatusLabel(task.status)} · {task.title}
-                  </Text>
-                ))}
-                <Text style={styles.muted}>
-                  {projectTasks.length ? 'Tap a task to link it here. Tap it again to unlink it. A task can belong to one milestone.' : 'Add a task, then link it here.'}
-                </Text>
-                {projectTasks.length ? (
-                  <View style={styles.taskChoices}>
-                    {projectTasks.map((task) => (
-                      <Chip
-                        key={task.id}
-                        label={task.title}
-                        active={task.milestone_id === milestone.id}
-                        onPress={() => void linkTask(task.id, task.milestone_id === milestone.id ? null : milestone.id)}
-                      />
+                {open ? (
+                  <>
+                    {stats.total > 0 && stats.done === stats.total && !milestone.completed_at ? (
+                      <Text style={styles.muted}>All linked tasks are finished. Mark the milestone done when you are ready.</Text>
+                    ) : null}
+                    {linked.map((task) => (
+                      <Text key={task.id} style={styles.link} onPress={() => router.push(`/task/${task.id}`)}>
+                        {taskStatusLabel(task.status)} · {task.title}
+                      </Text>
                     ))}
-                  </View>
-                ) : null}
-                <Text style={styles.link} onPress={() => void toggleMilestone(milestone)}>
-                  {milestone.completed_at ? 'Mark not done' : 'Mark done'}
-                </Text>
-                <View style={styles.section}>
-                  {index > 0 ? <Text style={styles.link} onPress={() => void moveMilestone(index, -1)}>Move up</Text> : <Text />}
-                  {index < milestones.length - 1 ? <Text style={styles.link} onPress={() => void moveMilestone(index, 1)}>Move down</Text> : null}
-                </View>
+                    <Text style={styles.muted}>
+                      {projectTasks.length ? 'Tap a task to link it here. Tap it again to unlink it. A task can belong to one milestone.' : 'Add a task, then link it here.'}
+                    </Text>
+                    {projectTasks.length ? (
+                      <View style={styles.taskChoices}>
+                        {projectTasks.map((task) => (
+                          <Chip
+                            key={task.id}
+                            label={task.title}
+                            active={task.milestone_id === milestone.id}
+                            onPress={() => void linkTask(task.id, task.milestone_id === milestone.id ? null : milestone.id)}
+                          />
+                        ))}
+                      </View>
+                    ) : null}
+                    <Text style={styles.link} onPress={() => void toggleMilestone(milestone)}>
+                      {milestone.completed_at ? 'Mark not done' : 'Mark done'}
+                    </Text>
+                    <View style={styles.section}>
+                      {index > 0 ? <Text style={styles.link} onPress={() => void moveMilestone(index, -1)}>Move up</Text> : <Text />}
+                      {index < milestones.length - 1 ? <Text style={styles.link} onPress={() => void moveMilestone(index, 1)}>Move down</Text> : null}
+                    </View>
+                  </>
+                ) : (
+                  <Text style={styles.link} onPress={() => setOpenMilestoneId(milestone.id)}>Show tasks and actions</Text>
+                )}
               </Card>
               );
             }) : <EmptyState title="No milestones yet" body="Add a checkpoint when the project has a meaningful stage. Tasks stay even if you delete a milestone later. Project progress counts finished tasks only." />}
             <Field label="Milestone" value={milestoneTitle} onChangeText={setMilestoneTitle} placeholder="e.g. Working prototype" maxLength={140} />
             <DateField label="Target date" value={milestoneDate} onChange={setMilestoneDate} />
-            <Button title={busy ? 'Saving…' : 'Add milestone'} onPress={() => void addMilestone()} disabled={busy} secondary />
+            <Button title="Add milestone" onPress={() => void addMilestone()} busy={busy} secondary />
           </>
         ) : null}
 

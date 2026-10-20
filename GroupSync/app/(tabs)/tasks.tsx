@@ -33,6 +33,7 @@ const label: Record<TaskStatus, string> = {
 export default function TasksScreen() {
   const { tasks, loading, error, refresh } = useWorkspace();
   const [query, setQuery] = useState('');
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   const visible = tasks
     .filter((task) => {
@@ -48,11 +49,15 @@ export default function TasksScreen() {
   }
 
   const toggleFinished = async (taskId: string, current: TaskStatus) => {
+    if (pendingId) return;
     const next = current === 'completed' ? 'todo' : 'completed';
+    setPendingId(taskId);
     try {
       await updateTaskStatus(taskId, next);
     } catch {
       await refresh();
+    } finally {
+      setPendingId(null);
     }
   };
 
@@ -82,7 +87,7 @@ export default function TasksScreen() {
                 style={styles.task}
               >
                 <Pressable accessibilityRole="button" onPress={() => router.push(`/task/${task.id}`)} style={styles.taskBody}>
-                  <Text style={styles.taskTitle}>{task.title}</Text>
+                  <Text style={[styles.taskTitle, task.status === 'completed' && styles.taskDone]}>{task.title}</Text>
                   <Text style={styles.meta}>
                     {task.group?.name || 'Personal'} · {assigneeLabel(task.assignments)} · Due{' '}
                     {formatDate(task.due_at)}
@@ -95,12 +100,16 @@ export default function TasksScreen() {
 
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityState={{ busy: pendingId === task.id, checked: task.status === 'completed' }}
                   accessibilityLabel={task.status === 'completed' ? 'Mark not finished' : 'Mark finished'}
+                  disabled={pendingId === task.id}
                   onPress={() => void toggleFinished(task.id, task.status)}
-                  style={styles.check}
+                  style={({ pressed }) => [styles.check, pressed && styles.checkPressed]}
                 >
-                  <Text style={styles.checkMark}>{task.status === 'completed' ? '✓' : '○'}</Text>
-                  <Text style={styles.checkLabel}>{task.status === 'completed' ? 'Finished' : 'Finish'}</Text>
+                  <View style={[styles.mark, task.status === 'completed' && styles.markOn, pendingId === task.id && styles.markBusy]}>
+                    <Text style={styles.markGlyph}>{task.status === 'completed' ? '✓' : ''}</Text>
+                  </View>
+                  <Text style={styles.checkLabel}>{pendingId === task.id ? 'Saving' : task.status === 'completed' ? 'Finished' : 'Finish'}</Text>
                 </Pressable>
               </Card>
             ))
@@ -141,8 +150,11 @@ const styles = {
   },
   taskTitle: {
     color: theme.colors.ink,
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  taskDone: {
+    color: theme.colors.muted,
   },
   meta: {
     color: theme.colors.muted,
@@ -158,15 +170,35 @@ const styles = {
   check: {
     alignItems: 'center',
     padding: 8,
+    minWidth: 64,
   },
-  checkMark: {
-    color: theme.colors.primary,
-    fontSize: 27,
+  checkPressed: {
+    opacity: 0.7,
+  },
+  mark: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markOn: {
+    backgroundColor: theme.colors.primary,
+  },
+  markBusy: {
+    opacity: 0.45,
+  },
+  markGlyph: {
+    color: theme.colors.onPrimary,
+    fontSize: 14,
     fontWeight: '700',
   },
   checkLabel: {
     color: theme.colors.primary,
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '700',
+    marginTop: 4,
   },
 } as const;
