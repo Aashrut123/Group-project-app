@@ -156,6 +156,7 @@ export default function HomeScreen() {
                   <Text style={styles.cardTitle}>{group.name}</Text>
                   <ProgressBar
                     value={percent}
+                    color={group.color || theme.colors.primary}
                     label={`${percent}% of tasks complete${group.deadline ? ` · due ${formatDate(group.deadline)}` : ''}`}
                   />
                 </Card>

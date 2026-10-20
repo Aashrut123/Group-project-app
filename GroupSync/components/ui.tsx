@@ -251,9 +251,11 @@ export function Section({ children }: { children: React.ReactNode }) {
 export function ProgressBar({
   value,
   label,
+  color,
 }: {
   value: number;
   label?: string;
+  color?: string;
 }) {
   const clamped = Math.max(0, Math.min(100, Math.round(value)));
   return (
@@ -264,7 +266,7 @@ export function ProgressBar({
         accessibilityValue={{ min: 0, max: 100, now: clamped }}
         style={styles.track}
       >
-        <View style={[styles.fill, { width: `${clamped}%` }]} />
+        <View style={[styles.fill, { width: `${clamped}%`, backgroundColor: color || theme.colors.primary }]} />
       </View>
     </View>
   );

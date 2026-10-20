@@ -97,6 +97,7 @@ export default function GroupsScreen() {
                   </Text>
                   <ProgressBar
                     value={percent}
+                    color={group.color || theme.colors.primary}
                     label={`${percent}% complete${group.deadline ? ` · due ${formatDate(group.deadline)}` : ''}`}
                   />
                   {group.description ? (

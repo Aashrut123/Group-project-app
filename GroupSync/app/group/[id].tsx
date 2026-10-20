@@ -375,6 +375,7 @@ export default function GroupDetailScreen() {
 
         <ProgressBar
           value={progress}
+          color={group?.color || theme.colors.primary}
           label={`${progress}% complete${group?.deadline ? ` · deadline ${formatDate(group.deadline)}` : ''}${group?.outcome ? ` · ${group.outcome}` : ''}`}
         />
 
