@@ -234,6 +234,18 @@ export default function GroupDetailScreen() {
     else await load();
   };
 
+  const linkTask = async (taskId: string, milestoneId: string | null) => {
+    setError('');
+    const { error: issue } = await supabase.from('tasks').update({ milestone_id: milestoneId }).eq('id', taskId);
+    if (issue) {
+      setError(/milestone_id|schema cache|column/.test(issue.message)
+        ? 'Run the latest SQL migration in Supabase, then try again.'
+        : issue.message);
+      return;
+    }
+    setTasks((current) => current.map((task) => (task.id === taskId ? { ...task, milestone_id: milestoneId } : task)));
+  };
+
   const invite = async () => {
     setBusy(true);
     setError('');
@@ -631,6 +643,21 @@ export default function GroupDetailScreen() {
                     {taskStatusLabel(task.status)} · {task.title}
                   </Text>
                 ))}
+                <Text style={styles.muted}>
+                  {projectTasks.length ? 'Tap a task to link it here. Tap it again to unlink it. A task can belong to one milestone.' : 'Add a task, then link it here.'}
+                </Text>
+                {projectTasks.length ? (
+                  <View style={styles.taskChoices}>
+                    {projectTasks.map((task) => (
+                      <Chip
+                        key={task.id}
+                        label={task.title}
+                        active={task.milestone_id === milestone.id}
+                        onPress={() => void linkTask(task.id, task.milestone_id === milestone.id ? null : milestone.id)}
+                      />
+                    ))}
+                  </View>
+                ) : null}
                 <Text style={styles.link} onPress={() => void toggleMilestone(milestone)}>
                   {milestone.completed_at ? 'Mark not done' : 'Mark done'}
                 </Text>
@@ -765,6 +792,12 @@ const styles = {
     justifyContent: 'space-between',
     marginTop: 8,
     marginBottom: 8,
+  },
+  taskChoices: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
   },
   heading: {
     color: theme.colors.ink,
