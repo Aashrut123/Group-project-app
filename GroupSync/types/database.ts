@@ -102,6 +102,7 @@ export interface Task {
   origin?: TaskOrigin;
   blocked_reason?: string;
   plan_id?: string | null;
+  milestone_id?: string | null;
   group?: Group;
   assignments?: TaskAssignment[];
 }
@@ -133,6 +134,7 @@ export interface Milestone {
   due_on: string | null;
   completed_at: string | null;
   created_by: string;
+  sort_order?: number;
 }
 
 export interface ProgressLog {

@@ -6,7 +6,7 @@ import { atLocalTime, formatDay, isStillScheduled, overlapsLocalDay } from './da
 import { buildFallbackPlan } from './fallback.ts';
 import { canPromoteMember, canRemoveMember } from './permissions.ts';
 import { acceptedChanges, proposeReschedule } from './reschedule.ts';
-import { completionPercent, nextTaskStatus } from './status.ts';
+import { completionPercent, milestoneTaskProgress, nextTaskStatus } from './status.ts';
 import type { PlannerInput, PlannerMember, RescheduleTask } from './types.ts';
 import { parseGeneratedPlan, validatePlannerInput } from './validate.ts';
 
@@ -51,10 +51,17 @@ test('task status moves through blocked before completed', () => {
   assert.equal(nextTaskStatus('completed'), 'todo');
 });
 
-test('completion uses tasks and milestones', () => {
-  assert.equal(completionPercent([], []), 0);
-  assert.equal(completionPercent([{ status: 'completed' }, { status: 'todo' }], []), 50);
-  assert.equal(completionPercent([{ status: 'completed' }], [{ completed: false }]), 50);
+test('project progress counts each task once', () => {
+  assert.equal(completionPercent([]), 0);
+  assert.equal(completionPercent([{ status: 'completed' }, { status: 'todo' }]), 50);
+  assert.equal(completionPercent([{ status: 'completed' }]), 100);
+  assert.deepEqual(milestoneTaskProgress([]), { done: 0, total: 0, percent: 0 });
+  assert.equal(milestoneTaskProgress([
+    { status: 'completed' },
+    { status: 'todo' },
+    { status: 'todo' },
+    { status: 'todo' },
+  ]).percent, 25);
 });
 
 test('membership rules match the database checks', () => {

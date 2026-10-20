@@ -24,6 +24,7 @@ import { theme } from '@/lib/theme';
 
 import type {
   Comment,
+  Milestone,
   Requirement,
   Task,
   TaskStatus,
@@ -49,6 +50,7 @@ export default function TaskDetailScreen() {
   const [siblings, setSiblings] = useState<{ id: string; title: string; status: string }[]>([]);
   const [links, setLinks] = useState<DependencyLink[]>([]);
   const [members, setMembers] = useState<{ user_id: string; name: string }[]>([]);
+  const [milestones, setMilestones] = useState<Pick<Milestone, 'id' | 'title'>[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -128,6 +130,11 @@ export default function TaskDetailScreen() {
           name: personName(row.profile),
         })),
       );
+      const milestoneResult = await supabase.from('milestones').select('id,title').eq('group_id', loaded.group_id).order('sort_order').order('title');
+      const fallbackMilestones = milestoneResult.error && /sort_order/.test(milestoneResult.error.message)
+        ? await supabase.from('milestones').select('id,title').eq('group_id', loaded.group_id).order('title')
+        : milestoneResult;
+      setMilestones(fallbackMilestones.error ? [] : (fallbackMilestones.data || []) as Pick<Milestone, 'id' | 'title'>[]);
     }
     setLoading(false);
   }, [id]);
@@ -216,6 +223,21 @@ export default function TaskDetailScreen() {
       return;
     }
     await load();
+  };
+
+  const setMilestone = async (milestoneId: string | null) => {
+    if (!id || busy) return;
+    setBusy(true);
+    setError('');
+    const { error: issue } = await supabase.from('tasks').update({ milestone_id: milestoneId }).eq('id', id);
+    setBusy(false);
+    if (issue) {
+      setError(/milestone_id|schema cache|column/.test(issue.message)
+        ? 'Run the latest SQL migration in Supabase, then try again.'
+        : issue.message);
+      return;
+    }
+    setTask((current) => (current ? { ...current, milestone_id: milestoneId } : current));
   };
 
   const toggleAssignee = async (userId: string) => {
@@ -413,6 +435,24 @@ export default function TaskDetailScreen() {
           <Card>
             <Text style={styles.body}>No teammates are in this project yet.</Text>
           </Card>
+        )}
+
+        <Text style={styles.heading}>Milestone</Text>
+        <Text style={styles.body}>Optional. This task stays if the milestone is removed.</Text>
+        {milestones.length ? (
+          <View style={styles.row}>
+            <Chip label="None" active={!task.milestone_id} onPress={() => void setMilestone(null)} />
+            {milestones.map((milestone) => (
+              <Chip
+                key={milestone.id}
+                label={milestone.title}
+                active={task.milestone_id === milestone.id}
+                onPress={() => void setMilestone(milestone.id)}
+              />
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.body}>Add a milestone from the project timeline, then attach this task to it.</Text>
         )}
 
         <Text style={styles.heading}>Schedule</Text>

@@ -18,18 +18,18 @@ export function taskStatusLabel(status: string): string {
   return 'Not started';
 }
 
-export function completionPercent(
-  tasks: { status: string }[],
-  milestones: { completed: boolean }[] = [],
-): number {
-  const taskScore = tasks.length
-    ? tasks.filter((task) => task.status === 'completed').length / tasks.length
-    : null;
-  const milestoneScore = milestones.length
-    ? milestones.filter((item) => item.completed).length / milestones.length
-    : null;
-  if (taskScore == null && milestoneScore == null) return 0;
-  if (taskScore == null) return Math.round((milestoneScore ?? 0) * 100);
-  if (milestoneScore == null) return Math.round(taskScore * 100);
-  return Math.round(((taskScore + milestoneScore) / 2) * 100);
+export function completionPercent(tasks: { status: string }[]): number {
+  if (!tasks.length) return 0;
+  const done = tasks.filter((task) => task.status === 'completed').length;
+  return Math.round((done / tasks.length) * 100);
+}
+
+/** Finished linked tasks divided by linked tasks. An empty milestone is 0, not complete. */
+export function milestoneTaskProgress(tasks: { status: string }[]): { done: number; total: number; percent: number } {
+  const done = tasks.filter((task) => task.status === 'completed').length;
+  return {
+    done,
+    total: tasks.length,
+    percent: tasks.length ? Math.round((done / tasks.length) * 100) : 0,
+  };
 }

@@ -27,7 +27,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { formatDate, formatTime } from '@/lib/format';
 import { formatDay, parseDay } from '@/lib/planner/dates';
 import { useWorkspace, updateTaskStatus } from '@/hooks/useWorkspace';
-import { completionPercent, taskStatusLabel } from '@/lib/planner/status';
+import { completionPercent, milestoneTaskProgress, taskStatusLabel } from '@/lib/planner/status';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 import type {
@@ -90,8 +90,7 @@ export default function GroupDetailScreen() {
         .from('tasks')
         .select('*')
         .eq('group_id', id)
-        .order('created_at', { ascending: false })
-        .limit(10),
+        .order('created_at', { ascending: false }),
     ]);
 
     const issue = g.error || m.error || e.error || t.error;
@@ -108,10 +107,11 @@ export default function GroupDetailScreen() {
     setMembers((m.data || []) as Membership[]);
     setEvents((e.data || []) as CalendarEvent[]);
     setTasks((t.data || []) as Task[]);
-    const [milestoneResult, logResult] = await Promise.all([
-      supabase.from('milestones').select('*').eq('group_id', id).order('due_on'),
-      supabase.from('progress_logs').select('*, profile:profiles(display_name)').eq('group_id', id).order('created_at', { ascending: false }).limit(20),
-    ]);
+    let milestoneResult = await supabase.from('milestones').select('*').eq('group_id', id).order('sort_order').order('due_on');
+    if (milestoneResult.error && /sort_order/.test(milestoneResult.error.message)) {
+      milestoneResult = await supabase.from('milestones').select('*').eq('group_id', id).order('due_on');
+    }
+    const logResult = await supabase.from('progress_logs').select('*, profile:profiles(display_name)').eq('group_id', id).order('created_at', { ascending: false }).limit(20);
     setMilestones(milestoneResult.error ? [] : (milestoneResult.data || []) as Milestone[]);
     setLogs(logResult.error ? [] : (logResult.data || []) as ProgressLog[]);
     setLoading(false);
@@ -167,7 +167,7 @@ export default function GroupDetailScreen() {
 
   const canManage =
     myRole === 'owner' || myRole === 'admin';
-  const progress = completionPercent(projectTasks, milestones.map((item) => ({ completed: Boolean(item.completed_at) })));
+  const progress = completionPercent(projectTasks);
 
   const saveProject = async () => {
     setBusy(true);
@@ -204,6 +204,25 @@ export default function GroupDetailScreen() {
     setMilestoneTitle('');
     setMilestoneDate(null);
     await load();
+  };
+
+  const moveMilestone = async (index: number, direction: -1 | 1) => {
+    const next = index + direction;
+    if (next < 0 || next >= milestones.length) return;
+    const current = milestones[index];
+    const other = milestones[next];
+    if (!current || !other) return;
+    setError('');
+    const first = await supabase.from('milestones').update({ sort_order: next }).eq('id', current.id);
+    if (first.error) {
+      setError(first.error.message.includes('sort_order')
+        ? 'Run the latest SQL migration in Supabase, then try again.'
+        : first.error.message);
+      return;
+    }
+    const second = await supabase.from('milestones').update({ sort_order: index }).eq('id', other.id);
+    if (second.error) setError(second.error.message);
+    else await load();
   };
 
   const toggleMilestone = async (milestone: Milestone) => {
@@ -377,7 +396,9 @@ export default function GroupDetailScreen() {
           <ProgressBar
             value={progress}
             color={group?.color || theme.colors.primary}
-            label={`${progress}% complete${group?.deadline ? ` · deadline ${formatDate(group.deadline)}` : ''}${group?.outcome ? ` · ${group.outcome}` : ''}`}
+            label={projectTasks.length
+            ? `${progress}% of tasks finished${group?.deadline ? ` · deadline ${formatDate(group.deadline)}` : ''}${group?.outcome ? ` · ${group.outcome}` : ''}`
+            : `No tasks yet, so this stays at 0%${group?.deadline ? ` · deadline ${formatDate(group.deadline)}` : ''}`}
           />
         </View>
 
@@ -590,15 +611,36 @@ export default function GroupDetailScreen() {
         {section === 'timeline' ? (
           <>
             <Text style={styles.heading}>Milestones</Text>
-            {milestones.length ? milestones.map((milestone) => (
+            {milestones.length ? milestones.map((milestone, index) => {
+              const linked = projectTasks.filter((task) => task.milestone_id === milestone.id);
+              const stats = milestoneTaskProgress(linked);
+              return (
               <Card key={milestone.id}>
                 <Text style={styles.itemTitle}>{milestone.title}</Text>
-                <Text style={styles.muted}>{milestone.due_on ? formatDate(milestone.due_on) : 'No date'}{milestone.completed_at ? ' · done' : ''}</Text>
+                <Text style={styles.muted}>
+                  {milestone.due_on ? formatDate(milestone.due_on) : 'No date'}
+                  {milestone.completed_at ? ' · marked done' : ''}
+                  {stats.total ? ` · ${stats.done} of ${stats.total} tasks finished` : ' · no tasks linked yet'}
+                </Text>
+                {stats.total ? <ProgressBar value={stats.percent} color={group?.color || theme.colors.primary} /> : null}
+                {stats.total > 0 && stats.done === stats.total && !milestone.completed_at ? (
+                  <Text style={styles.muted}>All linked tasks are finished. Mark the milestone done when you are ready.</Text>
+                ) : null}
+                {linked.map((task) => (
+                  <Text key={task.id} style={styles.link} onPress={() => router.push(`/task/${task.id}`)}>
+                    {taskStatusLabel(task.status)} · {task.title}
+                  </Text>
+                ))}
                 <Text style={styles.link} onPress={() => void toggleMilestone(milestone)}>
                   {milestone.completed_at ? 'Mark not done' : 'Mark done'}
                 </Text>
+                <View style={styles.section}>
+                  {index > 0 ? <Text style={styles.link} onPress={() => void moveMilestone(index, -1)}>Move up</Text> : <Text />}
+                  {index < milestones.length - 1 ? <Text style={styles.link} onPress={() => void moveMilestone(index, 1)}>Move down</Text> : null}
+                </View>
               </Card>
-            )) : <EmptyState title="No milestones yet" body="Add the outcomes this project has to reach. Progress counts a milestone only after you mark it done." />}
+              );
+            }) : <EmptyState title="No milestones yet" body="Add a checkpoint when the project has a meaningful stage. Tasks stay even if you delete a milestone later. Project progress counts finished tasks only." />}
             <Field label="Milestone" value={milestoneTitle} onChangeText={setMilestoneTitle} placeholder="e.g. Working prototype" maxLength={140} />
             <DateField label="Target date" value={milestoneDate} onChange={setMilestoneDate} />
             <Button title={busy ? 'Saving…' : 'Add milestone'} onPress={() => void addMilestone()} disabled={busy} secondary />
@@ -643,6 +685,7 @@ export default function GroupDetailScreen() {
               >
                 {taskStatusLabel(task.status)} ·{' '}
                 {formatDate(task.due_at)}
+                {task.milestone_id ? ` · ${milestones.find((item) => item.id === task.milestone_id)?.title || 'Milestone'}` : ''}
               </Text>
               <Text
                 onPress={() => {
