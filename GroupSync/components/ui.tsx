@@ -56,11 +56,13 @@ export function Button({
   title,
   onPress,
   secondary,
+  light,
   disabled,
 }: {
   title: string;
   onPress: () => void;
   secondary?: boolean;
+  light?: boolean;
   disabled?: boolean;
 }) {
   return (
@@ -68,20 +70,42 @@ export function Button({
       accessibilityRole="button"
       onPress={onPress}
       disabled={disabled}
-      style={[
+      style={({ pressed }) => [
         styles.button,
         secondary && styles.buttonSecondary,
-        disabled && { opacity: 0.55 },
+        light && styles.buttonLight,
+        disabled && styles.disabled,
+        pressed && !disabled && styles.pressed,
       ]}
     >
       <Text
         style={[
           styles.buttonText,
           secondary && styles.buttonSecondaryText,
+          light && styles.buttonLightText,
         ]}
       >
         {title}
       </Text>
+    </Pressable>
+  );
+}
+
+export function TextButton({
+  title,
+  onPress,
+}: {
+  title: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      hitSlop={8}
+      onPress={onPress}
+      style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}
+    >
+      <Text style={styles.textButtonLabel}>{title}</Text>
     </Pressable>
   );
 }
@@ -118,7 +142,7 @@ export function EmptyState({
 }) {
   return (
     <Card style={styles.empty}>
-      <Text style={styles.emptyIcon}>✦</Text>
+      <View style={styles.emptyMark} />
       <Text style={styles.emptyTitle}>{title}</Text>
       <Text style={styles.emptyBody}>{body}</Text>
     </Card>
@@ -162,30 +186,86 @@ export function Chip({
       accessibilityRole="button"
       accessibilityState={{ selected: Boolean(active) }}
       onPress={onPress}
-      style={[styles.chip, active && styles.chipActive]}
+      style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.pressed]}
     >
       <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
     </Pressable>
   );
 }
 
+export type PillTone = 'neutral' | 'high' | 'medium' | 'low' | 'blocked' | 'done' | 'active';
+
+const pillTones: Record<PillTone, { backgroundColor: string; color: string }> = {
+  neutral: { backgroundColor: theme.colors.mint, color: theme.colors.primaryDark },
+  high: { backgroundColor: theme.colors.dangerBg, color: theme.colors.red },
+  medium: { backgroundColor: theme.colors.warningBg, color: theme.colors.warning },
+  low: { backgroundColor: theme.colors.line, color: theme.colors.ink },
+  blocked: { backgroundColor: theme.colors.dangerBg, color: theme.colors.red },
+  done: { backgroundColor: theme.colors.mint, color: theme.colors.primaryDark },
+  active: { backgroundColor: theme.colors.infoBg, color: theme.colors.blue },
+};
+
+export function priorityTone(priority: string): PillTone {
+  if (priority === 'high') return 'high';
+  if (priority === 'medium') return 'medium';
+  if (priority === 'low') return 'low';
+  return 'neutral';
+}
+
+export function statusTone(status: string): PillTone {
+  if (status === 'completed') return 'done';
+  if (status === 'blocked') return 'blocked';
+  if (status === 'in_progress') return 'active';
+  return 'neutral';
+}
+
 export function Pill({
   children,
   color,
+  tone = 'neutral',
 }: {
   children: React.ReactNode;
   color?: string;
+  tone?: PillTone;
 }) {
+  const chosen = pillTones[tone];
+  const backgroundColor = color || chosen.backgroundColor;
+  const ink = color === theme.colors.dangerBg
+    ? theme.colors.red
+    : color === theme.colors.warningBg
+      ? theme.colors.warning
+      : color
+        ? theme.colors.primaryDark
+        : chosen.color;
   return (
-    <View
-      style={[
-        styles.pill,
-        {
-          backgroundColor: color || theme.colors.mint,
-        },
-      ]}
-    >
-      <Text style={styles.pillText}>{children}</Text>
+    <View style={[styles.pill, { backgroundColor }]}>
+      <Text style={[styles.pillText, { color: ink }]}>{children}</Text>
+    </View>
+  );
+}
+
+export function Section({ children }: { children: React.ReactNode }) {
+  return <Text style={styles.section}>{children}</Text>;
+}
+
+export function ProgressBar({
+  value,
+  label,
+}: {
+  value: number;
+  label?: string;
+}) {
+  const clamped = Math.max(0, Math.min(100, Math.round(value)));
+  return (
+    <View style={styles.progressWrap}>
+      {label ? <Text style={styles.meta}>{label}</Text> : null}
+      <View
+        accessibilityRole="progressbar"
+        accessibilityValue={{ min: 0, max: 100, now: clamped }}
+        style={styles.track}
+      >
+        <View style={[styles.fill, { width: `${clamped}%` }]} />
+      </View>
     </View>
   );
 }
@@ -237,6 +317,9 @@ const styles = {
   buttonSecondary: {
     backgroundColor: theme.colors.mint,
   },
+  buttonLight: {
+    backgroundColor: theme.colors.surface,
+  },
 
   buttonText: {
     color: 'white',
@@ -246,6 +329,25 @@ const styles = {
 
   buttonSecondaryText: {
     color: theme.colors.primaryDark,
+  },
+  buttonLightText: {
+    color: theme.colors.primaryDark,
+  },
+  disabled: {
+    opacity: 0.55,
+  },
+  pressed: {
+    opacity: 0.72,
+  },
+  textButton: {
+    marginTop: 8,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  textButtonLabel: {
+    color: theme.colors.primary,
+    fontWeight: '800',
+    fontSize: 15,
   },
 
   field: {
@@ -276,9 +378,38 @@ const styles = {
     marginTop: 8,
   },
 
-  emptyIcon: {
-    color: theme.colors.primary,
-    fontSize: 25,
+  emptyMark: {
+    width: 28,
+    height: 4,
+    borderRadius: 4,
+    backgroundColor: theme.colors.primary,
+  },
+  section: {
+    color: theme.colors.ink,
+    fontSize: theme.type.section,
+    fontWeight: '800',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  meta: {
+    color: theme.colors.muted,
+    fontSize: theme.type.caption,
+    lineHeight: 18,
+  },
+  progressWrap: {
+    marginTop: 8,
+    gap: 6,
+  },
+  track: {
+    height: 6,
+    borderRadius: 6,
+    backgroundColor: theme.colors.line,
+    overflow: 'hidden',
+  },
+  fill: {
+    height: 6,
+    borderRadius: 6,
+    backgroundColor: theme.colors.primary,
   },
 
   emptyTitle: {
@@ -328,7 +459,9 @@ const styles = {
     borderColor: theme.colors.line,
     backgroundColor: theme.colors.surface,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    minHeight: 40,
+    justifyContent: 'center',
   },
   chipActive: {
     backgroundColor: theme.colors.primary,

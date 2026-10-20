@@ -20,6 +20,7 @@ import {
   Loading,
   Page,
   Pill,
+  ProgressBar,
   Title,
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -166,6 +167,7 @@ export default function GroupDetailScreen() {
 
   const canManage =
     myRole === 'owner' || myRole === 'admin';
+  const progress = completionPercent(projectTasks, milestones.map((item) => ({ completed: Boolean(item.completed_at) })));
 
   const saveProject = async () => {
     setBusy(true);
@@ -371,11 +373,10 @@ export default function GroupDetailScreen() {
           </View>
         </View>
 
-        <Text style={styles.muted}>
-          {completionPercent(projectTasks, milestones.map((item) => ({ completed: Boolean(item.completed_at) })))}% complete
-          {group?.deadline ? ` · deadline ${formatDate(group.deadline)}` : ''}
-          {group?.outcome ? ` · ${group.outcome}` : ''}
-        </Text>
+        <ProgressBar
+          value={progress}
+          label={`${progress}% complete${group?.deadline ? ` · deadline ${formatDate(group.deadline)}` : ''}${group?.outcome ? ` · ${group.outcome}` : ''}`}
+        />
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sections}>
           {([

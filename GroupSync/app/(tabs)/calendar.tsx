@@ -422,8 +422,8 @@ export default function CalendarScreen() {
             <EmptyState
               title={view === 'agenda' ? 'Nothing coming up' : 'Nothing on this day'}
               body={view === 'agenda'
-                ? 'Meetings and deadlines that have already ended stay on their calendar day, and drop off this list.'
-                : 'Meetings and deadlines that fall on the selected day show up here. Switch to Agenda to see what is still ahead.'}
+                ? 'Meetings and deadlines that are still ahead show up here.'
+                : 'This day shows meetings and deadlines that have not ended yet. Agenda lists everything still ahead.'}
             />
           )}
 

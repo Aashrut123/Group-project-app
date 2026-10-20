@@ -12,6 +12,9 @@ import {
   Loading,
   Page,
   Pill,
+  priorityTone,
+  statusTone,
+  TextButton,
   Title,
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -102,12 +105,7 @@ export default function TasksScreen() {
               Tasks
             </Title>
 
-            <Text
-              style={styles.add}
-              onPress={() => router.push('/create-task')}
-            >
-              ＋ Add
-            </Text>
+            <TextButton title="Add" onPress={() => router.push('/create-task')} />
           </View>
 
           <ScrollView
@@ -115,39 +113,15 @@ export default function TasksScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.filters}
           >
-            <Text
-              onPress={() => setScope('mine')}
-              style={[
-                styles.filter,
-                scope === 'mine' && styles.active,
-              ]}
-            >
-              My tasks
-            </Text>
-
-            <Text
-              onPress={() => setScope('groups')}
-              style={[
-                styles.filter,
-                scope === 'groups' && styles.active,
-              ]}
-            >
-              All group tasks
-            </Text>
-
-            <View style={{ width: 8 }} />
-
+            <Chip label="My tasks" active={scope === 'mine'} onPress={() => setScope('mine')} />
+            <Chip label="All group tasks" active={scope === 'groups'} onPress={() => setScope('groups')} />
             {(['all', ...statuses] as const).map(value => (
-              <Text
+              <Chip
                 key={value}
+                label={value === 'all' ? 'All statuses' : label[value]}
+                active={filter === value}
                 onPress={() => setFilter(value)}
-                style={[
-                  styles.filter,
-                  filter === value && styles.active,
-                ]}
-              >
-                {value === 'all' ? 'All statuses' : label[value]}
-              </Text>
+              />
             ))}
           </ScrollView>
 
@@ -155,7 +129,7 @@ export default function TasksScreen() {
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
             {(['all', 'high', 'medium', 'low'] as const).map((value) => (
-              <Chip key={value} label={value === 'all' ? 'Any priority' : value} active={priority === value} onPress={() => setPriority(value)} />
+              <Chip key={value} label={value === 'all' ? 'Any priority' : value[0].toUpperCase() + value.slice(1)} active={priority === value} onPress={() => setPriority(value)} />
             ))}
             <Chip label="All projects" active={!projectId} onPress={() => setProjectId(null)} />
             {groups.map((group) => (
@@ -171,44 +145,17 @@ export default function TasksScreen() {
                 key={task.id}
                 style={styles.task}
               >
-                <View style={{ flex: 1 }}>
-                  <Text
-                    onPress={() =>
-                      router.push(`/task/${task.id}`)
-                    }
-                    style={styles.taskTitle}
-                  >
-                    {task.title}
-                  </Text>
-
-                  <Text
-                    onPress={() =>
-                      router.push(`/task/${task.id}`)
-                    }
-                    style={styles.meta}
-                  >
+                <Pressable accessibilityRole="button" onPress={() => router.push(`/task/${task.id}`)} style={styles.taskBody}>
+                  <Text style={styles.taskTitle}>{task.title}</Text>
+                  <Text style={styles.meta}>
                     {task.group?.name || 'Group'} · {assigneeLabel(task.assignments)} · Due{' '}
                     {formatDate(task.due_at)}
                   </Text>
-
                   <View style={styles.pills}>
-                    <Pill
-                      color={
-                        task.priority === 'high'
-                          ? '#FCE9E7'
-                          : task.priority === 'medium'
-                            ? '#FFF3D9'
-                            : undefined
-                      }
-                    >
-                      {task.priority}
-                    </Pill>
-
-                    <View style={{ width: 7 }} />
-
-                    <Pill>{label[task.status]}</Pill>
+                    <Pill tone={priorityTone(task.priority)}>{task.priority}</Pill>
+                    <Pill tone={statusTone(task.status)}>{label[task.status]}</Pill>
                   </View>
-                </View>
+                </Pressable>
 
                 <Pressable
                   accessibilityRole="button"
@@ -251,36 +198,18 @@ const styles = {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  add: {
-    color: theme.colors.primary,
-    fontWeight: '800',
-    marginTop: 7,
-  },
   filters: {
     gap: 8,
     paddingBottom: 14,
-  },
-  filter: {
-    color: theme.colors.muted,
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: theme.colors.line,
-    borderRadius: 30,
-    paddingVertical: 8,
-    paddingHorizontal: 13,
-    overflow: 'hidden',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  active: {
-    color: 'white',
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
   },
   task: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
+  },
+  taskBody: {
+    flex: 1,
   },
   taskTitle: {
     color: theme.colors.ink,
@@ -294,6 +223,8 @@ const styles = {
   },
   pills: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     marginTop: 10,
   },
   check: {
