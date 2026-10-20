@@ -1,11 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import {
   Button,
   Card,
-  Chip,
   EmptyState,
   ErrorText,
   Field,
@@ -17,20 +16,12 @@ import {
   TextButton,
   Title,
 } from '@/components/ui';
-import { useAuth } from '@/features/auth/AuthProvider';
 import { updateTaskStatus, useWorkspace } from '@/hooks/useWorkspace';
 import { assigneeLabel, formatDate } from '@/lib/format';
 import { taskStatusLabel } from '@/lib/planner/status';
 import { theme } from '@/lib/theme';
-import type { TaskPriority, TaskStatus } from '@/types/database';
+import type { TaskStatus } from '@/types/database';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const statuses: TaskStatus[] = [
-  'todo',
-  'in_progress',
-  'blocked',
-  'completed',
-];
 
 const label: Record<TaskStatus, string> = {
   todo: taskStatusLabel('todo'),
@@ -40,38 +31,10 @@ const label: Record<TaskStatus, string> = {
 };
 
 export default function TasksScreen() {
-  const { user } = useAuth();
-  const { groups, tasks, loading, error, refresh } = useWorkspace();
-
-  const [filter, setFilter] = useState<'all' | TaskStatus>(
-    'all'
-  );
-  const [priority, setPriority] = useState<'all' | TaskPriority>('all');
-  const [projectId, setProjectId] = useState<string | null>(null);
-  const [scope, setScope] = useState<'mine' | 'groups'>(
-    'mine'
-  );
+  const { tasks, loading, error, refresh } = useWorkspace();
   const [query, setQuery] = useState('');
 
-  const mine = useMemo(
-    () =>
-      tasks.filter(
-        task =>
-          task.assignments?.some(
-            assignment => assignment.user_id === user?.id
-          ) || task.created_by === user?.id
-      ),
-    [tasks, user?.id]
-  );
-
-  const visible = (
-    scope === 'mine' ? mine : tasks
-  )
-    .filter(
-      task => filter === 'all' || task.status === filter
-    )
-    .filter((task) => priority === 'all' || task.priority === priority)
-    .filter((task) => !projectId || task.group_id === projectId)
+  const visible = tasks
     .filter((task) => {
       const haystack = `${task.title} ${task.description}`.toLowerCase();
       return haystack.includes(query.trim().toLowerCase());
@@ -108,34 +71,7 @@ export default function TasksScreen() {
             <TextButton title="Add" onPress={() => router.push('/create-task')} />
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filters}
-          >
-            <Chip label="My tasks" active={scope === 'mine'} onPress={() => setScope('mine')} />
-            <Chip label="All group tasks" active={scope === 'groups'} onPress={() => setScope('groups')} />
-            {(['all', ...statuses] as const).map(value => (
-              <Chip
-                key={value}
-                label={value === 'all' ? 'All statuses' : label[value]}
-                active={filter === value}
-                onPress={() => setFilter(value)}
-              />
-            ))}
-          </ScrollView>
-
           <Field label="Search" value={query} onChangeText={setQuery} placeholder="Search titles and descriptions" autoCapitalize="none" />
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-            {(['all', 'high', 'medium', 'low'] as const).map((value) => (
-              <Chip key={value} label={value === 'all' ? 'Any priority' : value[0].toUpperCase() + value.slice(1)} active={priority === value} onPress={() => setPriority(value)} />
-            ))}
-            <Chip label="All projects" active={!projectId} onPress={() => setProjectId(null)} />
-            {groups.map((group) => (
-              <Chip key={group.id} label={group.name} active={projectId === group.id} onPress={() => setProjectId(group.id)} />
-            ))}
-          </ScrollView>
 
           {error ? <ErrorText>{error}</ErrorText> : null}
 
@@ -170,15 +106,11 @@ export default function TasksScreen() {
             ))
           ) : (
             <EmptyState
-              title={
-                scope === 'mine'
-                  ? 'No tasks assigned to you yet'
-                  : 'No tasks match this view'
-              }
+              title={query.trim() ? 'No tasks match this search' : 'No tasks yet'}
               body={
-                scope === 'mine'
-                  ? 'Ask a teammate to assign you a task, or switch to all group tasks to browse the shared work.'
-                  : 'Add work to a group, assign it to yourself or a teammate, and track progress here.'
+                query.trim()
+                  ? 'Try a different word from a title or description.'
+                  : 'Add work to a project and it will show up here.'
               }
             />
           )}
@@ -197,10 +129,6 @@ const styles = {
   head: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-  },
-  filters: {
-    gap: 8,
-    paddingBottom: 14,
   },
   task: {
     flexDirection: 'row',
