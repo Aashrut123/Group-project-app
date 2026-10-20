@@ -8,6 +8,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { findConflicts } from '@/lib/planner/conflicts';
 import { isStillScheduled } from '@/lib/planner/dates';
+import { goalSummary, homeLead } from '@/lib/goals';
 import { completionPercent, isOpenStatus } from '@/lib/planner/status';
 import { formatDate, formatTime } from '@/lib/format';
 import { theme } from '@/lib/theme';
@@ -60,6 +61,12 @@ export default function HomeScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.date}>{today}</Text>
               <Text style={styles.greet}>{firstName ? `Hello, ${firstName}` : 'Hello'}</Text>
+              {goalSummary(profile?.goals, profile?.custom_goal) ? (
+                <Text style={styles.quiet}>{goalSummary(profile?.goals, profile?.custom_goal)}</Text>
+              ) : null}
+              {homeLead(profile?.goals, profile?.planning_style) ? (
+                <Text style={styles.quiet}>{homeLead(profile?.goals, profile?.planning_style)}</Text>
+              ) : null}
               <Text style={styles.quiet}>
                 {openMine.length} open task{openMine.length === 1 ? '' : 's'}
                 {overdue.length ? ` · ${overdue.length} overdue` : ''}
@@ -79,7 +86,11 @@ export default function HomeScreen() {
           {!activeGroups.length ? (
             <Card>
               <Text style={styles.cardTitle}>Start with one project</Text>
-              <Text style={styles.quiet}>Create a team workspace, then invite people with a single-use code. The planner can wait until the project has a deadline.</Text>
+              <Text style={styles.quiet}>
+                {homeLead(profile?.goals, profile?.planning_style)
+                  ? `${homeLead(profile?.goals, profile?.planning_style)} Create a project when you are ready. Teammates can join later.`
+                  : 'Create a project, then invite people with a single-use code when you want them. You can work alone until then.'}
+              </Text>
               <Button title="Create a project" onPress={() => router.push('/create-group')} />
             </Card>
           ) : (

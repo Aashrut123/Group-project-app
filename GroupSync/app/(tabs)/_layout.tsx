@@ -16,7 +16,7 @@ const glyph: Record<string, string> = {
 };
 
 export default function TabLayout() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const { tasks, events } = useWorkspace();
   usePhoneAlerts(Boolean(user), tasks, events);
 
@@ -26,6 +26,10 @@ export default function TabLayout() {
 
   if (!user) {
     return <Redirect href="/auth" />;
+  }
+
+  if (profile?.onboarding_completed === false) {
+    return <Redirect href="/onboarding" />;
   }
 
   return (

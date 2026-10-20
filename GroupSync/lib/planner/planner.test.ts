@@ -90,6 +90,17 @@ test('fallback plan avoids unavailable days and does not duplicate finished work
   assert.match(plan.summary, /hours|fit/i);
 });
 
+test('sprint pacing keeps a shorter buffer than flexible pacing', () => {
+  const sprint = buildFallbackPlan(input({ pace: 'sprint', existingTasks: [] }));
+  const flexible = buildFallbackPlan(input({ pace: 'flexible', existingTasks: [] }));
+  assert.match(sprint.risks.join(' '), /last 1 day /);
+  assert.match(flexible.risks.join(' '), /last 4 days /);
+  assert.match(sprint.assumptions.join(' '), /Sprint pacing/);
+  const sprintMid = sprint.tasks[Math.floor(sprint.tasks.length / 2)]?.dueDate ?? '';
+  const flexibleMid = flexible.tasks[Math.floor(flexible.tasks.length / 2)]?.dueDate ?? '';
+  assert.ok(sprintMid <= flexibleMid);
+});
+
 test('fallback plan is honest when the team has no days', () => {
   const plan = buildFallbackPlan(input({
     startDate: '2026-11-02',

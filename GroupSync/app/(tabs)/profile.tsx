@@ -14,6 +14,7 @@ import {
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { goalSummary } from '@/lib/goals';
 import { phoneAlertsPreference, setPhoneAlerts, syncPhoneAlerts, type AlertPreference } from '@/lib/phoneAlerts';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
@@ -210,6 +211,18 @@ export default function ProfileScreen() {
             onPress={() => void save()}
             disabled={busy}
           />
+
+          <Card style={{ marginTop: 8 }}>
+            <Text style={styles.section}>Goals</Text>
+            <Text style={styles.about}>
+              {goalSummary(profile?.goals, profile?.custom_goal) || 'No goals saved yet. They shape milestone suggestions and the built-in planner.'}
+            </Text>
+            <Button
+              title="Edit goals"
+              onPress={() => router.push({ pathname: '/onboarding', params: { edit: '1' } })}
+              secondary
+            />
+          </Card>
 
           <Button title="Availability" onPress={() => router.push('/availability')} secondary />
           <Button title="Notices" onPress={() => router.push('/notifications')} secondary />

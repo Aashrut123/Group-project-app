@@ -12,6 +12,10 @@ export interface Profile {
   skills?: string;
   interests?: string;
   timezone?: string;
+  goals?: string[];
+  custom_goal?: string;
+  planning_style?: 'steady' | 'sprint' | 'flexible';
+  onboarding_completed?: boolean;
   created_at: string;
   updated_at: string;
 }

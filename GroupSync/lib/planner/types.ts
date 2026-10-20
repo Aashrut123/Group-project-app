@@ -40,6 +40,10 @@ export interface PlannerInput {
   milestones: PlannerMilestone[];
   members: PlannerMember[];
   existingTasks: ExistingTask[];
+  /** Personal goal id. The built-in planner uses it to name phases. */
+  focus?: string;
+  /** steady spreads work, sprint pulls dates forward, flexible keeps a longer buffer. */
+  pace?: 'steady' | 'sprint' | 'flexible';
 }
 
 export interface PlanTask {

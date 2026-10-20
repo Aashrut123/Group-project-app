@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { DateField } from '@/components/DateField';
 import { Button, Card, Chip, ErrorText, Field, Page, Pill } from '@/components/ui';
+import { useAuth } from '@/features/auth/AuthProvider';
 import { saveReviewedPlan } from '@/features/plans/savePlan';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { generatePlan } from '@/lib/planner/generate';
@@ -15,6 +16,7 @@ import type { Membership, UnavailablePeriod } from '@/types/database';
 
 export default function PlanScreen() {
   const params = useLocalSearchParams<{ groupId?: string }>();
+  const { profile } = useAuth();
   const { groups, tasks, refresh } = useWorkspace();
   const [groupId, setGroupId] = useState(params.groupId ?? '');
   const [outcome, setOutcome] = useState('');
@@ -94,6 +96,8 @@ export default function PlanScreen() {
             assigneeId: task.assignments?.[0]?.user_id ?? null,
             estimatedMinutes: task.estimated_minutes ?? undefined,
           })),
+          focus: profile?.goals?.[0],
+          pace: profile?.planning_style,
         },
         {
           useAi: process.env.EXPO_PUBLIC_AI_ENABLED === 'true',

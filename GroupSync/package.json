@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "node --experimental-strip-types --experimental-transform-types --import ./test/register.mjs --test lib/planner/planner.test.ts lib/reminders.test.ts"
+    "test": "node --experimental-strip-types --experimental-transform-types --import ./test/register.mjs --test lib/planner/planner.test.ts lib/reminders.test.ts lib/goals.test.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
