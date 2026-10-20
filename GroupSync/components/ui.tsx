@@ -12,9 +12,9 @@ import {
 
 import { theme } from '@/lib/theme';
 
-export function Page({ children, ...props }: ViewProps) {
+export function Page({ children, style, ...props }: ViewProps) {
   return (
-    <View style={styles.page} {...props}>
+    <View style={[styles.page, style]} {...props}>
       {children}
     </View>
   );

@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Redirect, router } from 'expo-router';
 import * as Linking from 'expo-linking';
@@ -123,8 +124,9 @@ export default function AuthScreen() {
   };
 
   return (
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={styles.safe}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
@@ -202,16 +204,22 @@ export default function AuthScreen() {
         </Page>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = {
+  safe: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
   content: {
     flexGrow: 1,
   },
 
   page: {
-    paddingTop: 34,
+    paddingTop: 18,
+    paddingBottom: 24,
   },
 
   brand: {
