@@ -58,6 +58,8 @@ export default function GroupDetailScreen() {
   const [outcome, setOutcome] = useState('');
   const [deadline, setDeadline] = useState<Date | null>(null);
   const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [milestoneTitle, setMilestoneTitle] = useState('');
+  const [milestoneDate, setMilestoneDate] = useState<Date | null>(null);
 
   const load = useCallback(async () => {
     const [g, m, e, t] = await Promise.all([
@@ -174,6 +176,39 @@ export default function GroupDetailScreen() {
       priority,
     }).eq('id', id);
     setBusy(false);
+    if (issue) setError(issue.message);
+    else await load();
+  };
+
+  const addMilestone = async () => {
+    const title = milestoneTitle.trim();
+    if (!title) {
+      setError('Name the milestone before saving it.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    const { error: issue } = await supabase.from('milestones').insert({
+      group_id: id,
+      title,
+      due_on: milestoneDate ? formatDay(milestoneDate) : null,
+      description: '',
+    });
+    setBusy(false);
+    if (issue) {
+      setError(issue.message);
+      return;
+    }
+    setMilestoneTitle('');
+    setMilestoneDate(null);
+    await load();
+  };
+
+  const toggleMilestone = async (milestone: Milestone) => {
+    setError('');
+    const { error: issue } = await supabase.from('milestones').update({
+      completed_at: milestone.completed_at ? null : new Date().toISOString(),
+    }).eq('id', milestone.id);
     if (issue) setError(issue.message);
     else await load();
   };
@@ -550,8 +585,14 @@ export default function GroupDetailScreen() {
               <Card key={milestone.id}>
                 <Text style={styles.itemTitle}>{milestone.title}</Text>
                 <Text style={styles.muted}>{milestone.due_on ? formatDate(milestone.due_on) : 'No date'}{milestone.completed_at ? ' · done' : ''}</Text>
+                <Text style={styles.link} onPress={() => void toggleMilestone(milestone)}>
+                  {milestone.completed_at ? 'Mark not done' : 'Mark done'}
+                </Text>
               </Card>
-            )) : <EmptyState title="No milestones yet" body="A reviewed plan can add milestones, or you can keep using tasks and calendar items." />}
+            )) : <EmptyState title="No milestones yet" body="Add the outcomes this project has to reach. Progress counts a milestone only after you mark it done." />}
+            <Field label="Milestone" value={milestoneTitle} onChangeText={setMilestoneTitle} placeholder="e.g. Working prototype" maxLength={140} />
+            <DateField label="Target date" value={milestoneDate} onChange={setMilestoneDate} />
+            <Button title={busy ? 'Saving…' : 'Add milestone'} onPress={() => void addMilestone()} disabled={busy} secondary />
           </>
         ) : null}
 
