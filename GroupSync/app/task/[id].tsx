@@ -16,9 +16,7 @@ import {
 
 import { useAuth } from '@/features/auth/AuthProvider';
 import { updateTaskStatus } from '@/hooks/useWorkspace';
-import { dependencyCycle, type DependencyLink } from '@/lib/dependencies';
 import { formatDate, personName } from '@/lib/format';
-import { taskStatusLabel } from '@/lib/planner/status';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 
@@ -44,11 +42,7 @@ export default function TaskDetailScreen() {
   const [newRequirement, setNewRequirement] = useState('');
   const [due, setDue] = useState<Date | null>(null);
   const [estimated, setEstimated] = useState('');
-  const [actual, setActual] = useState('');
   const [blocked, setBlocked] = useState('');
-  const [dependencies, setDependencies] = useState<{ id: string; title: string; status: string }[]>([]);
-  const [siblings, setSiblings] = useState<{ id: string; title: string; status: string }[]>([]);
-  const [links, setLinks] = useState<DependencyLink[]>([]);
   const [members, setMembers] = useState<{ user_id: string; name: string }[]>([]);
   const [milestones, setMilestones] = useState<Pick<Milestone, 'id' | 'title'>[]>([]);
 
@@ -89,36 +83,9 @@ export default function TaskDetailScreen() {
     setDescription(loaded?.description || '');
     setDue(loaded?.due_at ? new Date(loaded.due_at) : null);
     setEstimated(loaded?.estimated_minutes ? String(loaded.estimated_minutes) : '');
-    setActual(loaded?.actual_minutes != null ? String(loaded.actual_minutes) : '');
     setBlocked(loaded?.blocked_reason || '');
     setRequirements((r.data || []) as Requirement[]);
     setComments((c.data || []) as Comment[]);
-    const siblingResult = loaded?.group_id
-      ? await supabase.from('tasks').select('id,title,status').eq('group_id', loaded.group_id).order('title')
-      : { data: [], error: null };
-    const siblingRows = siblingResult.error ? [] : ((siblingResult.data || []) as { id: string; title: string; status: string }[]);
-    setSiblings(siblingRows);
-    const siblingIds = siblingRows.map((row) => row.id);
-    const linkResult = siblingIds.length
-      ? await supabase.from('task_dependencies').select('task_id,depends_on').in('task_id', siblingIds)
-      : { data: [], error: null };
-    const linkRows: DependencyLink[] = linkResult.error
-      ? []
-      : ((linkResult.data || []) as { task_id: string; depends_on: string }[]).map((row) => ({
-          taskId: row.task_id,
-          dependsOn: row.depends_on,
-        }));
-    setLinks(linkRows);
-    const byId = new Map(siblingRows.map((row) => [row.id, row]));
-    setDependencies(
-      linkRows
-        .filter((link) => link.taskId === id)
-        .map((link) => byId.get(link.dependsOn))
-        .filter((row): row is { id: string; title: string; status: string } => Boolean(row)),
-    );
-    if (siblingResult.error || linkResult.error) {
-      setError(siblingResult.error?.message || linkResult.error?.message || 'Could not load dependencies.');
-    }
     if (loaded?.group_id) {
       const memberships = await supabase
         .from('group_memberships')
@@ -182,13 +149,8 @@ export default function TaskDetailScreen() {
 
   const saveSchedule = async () => {
     const estimatedMinutes = estimated.trim() ? Number(estimated) : null;
-    const actualMinutes = actual.trim() ? Number(actual) : null;
     if (estimatedMinutes != null && (!Number.isInteger(estimatedMinutes) || estimatedMinutes <= 0)) {
       setError('Estimated minutes must be a whole number greater than 0.');
-      return;
-    }
-    if (actualMinutes != null && (!Number.isInteger(actualMinutes) || actualMinutes < 0)) {
-      setError('Time spent must be a whole number of minutes.');
       return;
     }
     setBusy(true);
@@ -196,33 +158,11 @@ export default function TaskDetailScreen() {
     const { error: issue } = await supabase.from('tasks').update({
       due_at: due ? due.toISOString() : null,
       estimated_minutes: estimatedMinutes,
-      actual_minutes: actualMinutes,
       blocked_reason: blocked.trim(),
     }).eq('id', id);
     setBusy(false);
     if (issue) setError(issue.message);
     else await load();
-  };
-
-  const toggleDependency = async (parentId: string) => {
-    if (!id || parentId === id || busy) return;
-    setBusy(true);
-    setError('');
-    const already = dependencies.some((item) => item.id === parentId);
-    if (!already && dependencyCycle(links, id, parentId)) {
-      setBusy(false);
-      setError('Those tasks would depend on each other in a loop. Pick a task that does not lead back here.');
-      return;
-    }
-    const result = already
-      ? await supabase.from('task_dependencies').delete().eq('task_id', id).eq('depends_on', parentId)
-      : await supabase.from('task_dependencies').insert({ task_id: id, depends_on: parentId });
-    setBusy(false);
-    if (result.error) {
-      setError(result.error.message);
-      return;
-    }
-    await load();
   };
 
   const setMilestone = async (milestoneId: string | null) => {
@@ -458,41 +398,8 @@ export default function TaskDetailScreen() {
         <Text style={styles.heading}>Schedule</Text>
         <DateField label="Due" mode="datetime" value={due} onChange={setDue} />
         <Field label="Estimated minutes" value={estimated} onChangeText={setEstimated} keyboardType="number-pad" placeholder="Optional" />
-        <Field label="Minutes you have spent" value={actual} onChangeText={setActual} keyboardType="number-pad" placeholder="Optional" />
         <Field label="What is blocking this" value={blocked} onChangeText={setBlocked} placeholder="Leave blank if nothing is in the way" />
         <Button title={busy ? 'Saving…' : 'Save schedule'} onPress={() => void saveSchedule()} disabled={busy} secondary />
-        <Text style={styles.heading}>Depends on</Text>
-        <Text style={styles.body}>This task waits until the ones you select are finished.</Text>
-        {dependencies.length ? dependencies.map((item) => (
-          <Card key={item.id}>
-            <Text style={styles.taskTitle} onPress={() => router.push(`/task/${item.id}`)}>{item.title}</Text>
-            <Text style={styles.body}>{taskStatusLabel(item.status)}</Text>
-            <Text style={styles.delete} onPress={() => void toggleDependency(item.id)}>Remove</Text>
-          </Card>
-        )) : (
-          <Text style={styles.body}>Nothing is blocking this task yet.</Text>
-        )}
-        {dependencies.some((item) => item.status !== 'completed') ? (
-          <Text style={styles.body}>
-            Waiting on {dependencies.filter((item) => item.status !== 'completed').map((item) => item.title).join(', ')}.
-          </Text>
-        ) : null}
-        {siblings.some((item) => item.id !== id && !dependencies.some((chosen) => chosen.id === item.id)) ? (
-          <>
-            <Text style={styles.heading}>Add a dependency</Text>
-            <View style={styles.row}>
-              {siblings
-                .filter((item) => item.id !== id && !dependencies.some((chosen) => chosen.id === item.id))
-                .map((item) => (
-                  <Chip key={item.id} label={item.title} onPress={() => void toggleDependency(item.id)} />
-                ))}
-            </View>
-          </>
-        ) : (
-          <Text style={styles.body}>
-            {siblings.length > 1 ? 'Every other task in this project is already linked.' : 'Other tasks in this project will show up here.'}
-          </Text>
-        )}
 
         <Text style={styles.heading}>Requirements</Text>
 
