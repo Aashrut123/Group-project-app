@@ -44,21 +44,27 @@ export default function CreateTaskScreen() {
   useEffect(() => {
     if (!groupId) return;
 
+    let active = true;
     supabase
       .from('group_memberships')
       .select('*, profile:profiles(id,display_name)')
       .eq('group_id', groupId)
-      .then(({ data }) =>
-        setMembers((data || []) as Membership[])
-      );
+      .then(({ data }) => {
+        if (active) setMembers((data || []) as Membership[]);
+      });
+    return () => {
+      active = false;
+    };
   }, [groupId]);
 
-  const create = async () => {
-    if (!groupId) {
-      setError('Choose a group.');
-      return;
-    }
+  const chooseGroup = (nextId: string) => {
+    const selected = nextId && groupId !== nextId ? nextId : '';
+    setGroupId(selected);
+    setAssignees([]);
+    if (!selected) setMembers([]);
+  };
 
+  const create = async () => {
     if (!title.trim()) {
       setError('Add a task title.');
       return;
@@ -76,7 +82,7 @@ export default function CreateTaskScreen() {
     const { data: task, error: issue } = await supabase
       .from('tasks')
       .insert({
-        group_id: groupId,
+        group_id: groupId || null,
         title: title.trim(),
         description: description.trim(),
         due_at: due?.toISOString() || null,
@@ -88,7 +94,11 @@ export default function CreateTaskScreen() {
 
     if (issue || !task) {
       setBusy(false);
-      setError(issue?.message || 'Could not create task.');
+      setError(
+        issue && /group_id|not-null|null value|row-level security/i.test(issue.message)
+          ? 'Run the latest SQL migration in Supabase, then try again.'
+          : issue?.message || 'Could not create task.',
+      );
       return;
     }
 
@@ -138,15 +148,22 @@ export default function CreateTaskScreen() {
         contentContainerStyle={{ paddingBottom: 28 }}
       >
         <Text style={styles.label}>Group</Text>
+        <Text style={styles.hint}>Optional. Tap a project to attach this task, then tap it again to leave the task personal.</Text>
 
         <Card style={styles.choices}>
+          <Text
+            onPress={() => chooseGroup('')}
+            style={[
+              styles.choice,
+              !groupId && styles.active,
+            ]}
+          >
+            None
+          </Text>
           {groups.map((group: Group) => (
             <Text
               key={group.id}
-              onPress={() => {
-                setGroupId(group.id);
-                setAssignees([]);
-              }}
+              onPress={() => chooseGroup(group.id)}
               style={[
                 styles.choice,
                 groupId === group.id && styles.active,
@@ -242,7 +259,7 @@ export default function CreateTaskScreen() {
         <Button
           title={busy ? 'Saving…' : 'Create task'}
           onPress={() => void create()}
-          disabled={busy || !groups.length}
+          disabled={busy}
         />
       </ScrollView>
     </Page>

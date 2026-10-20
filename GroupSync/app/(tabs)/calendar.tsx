@@ -356,7 +356,7 @@ export default function CalendarScreen() {
             <Card key={`deadline-${task.id}`} style={styles.event}>
               <View style={{ flex: 1 }}>
                 <Text onPress={() => router.push(`/task/${task.id}`)} style={styles.eventTitle}>{task.title}</Text>
-                <Text style={styles.eventMeta}>Task deadline · {task.group?.name || 'Project'} · {formatDate(task.due_at)}</Text>
+                <Text style={styles.eventMeta}>Task deadline · {task.group?.name || 'Personal'} · {formatDate(task.due_at)}</Text>
               </View>
               <Pill>deadline</Pill>
             </Card>

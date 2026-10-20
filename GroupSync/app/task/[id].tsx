@@ -287,7 +287,7 @@ export default function TaskDetailScreen() {
         <View style={styles.head}>
           <View style={{ flex: 1 }}>
             <Text style={styles.group}>
-              {task.group?.name || 'Group'} · due{' '}
+              {task.group?.name || 'Personal'} · due{' '}
               {formatDate(task.due_at)}
             </Text>
 

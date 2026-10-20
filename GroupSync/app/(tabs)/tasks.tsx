@@ -84,7 +84,7 @@ export default function TasksScreen() {
                 <Pressable accessibilityRole="button" onPress={() => router.push(`/task/${task.id}`)} style={styles.taskBody}>
                   <Text style={styles.taskTitle}>{task.title}</Text>
                   <Text style={styles.meta}>
-                    {task.group?.name || 'Group'} · {assigneeLabel(task.assignments)} · Due{' '}
+                    {task.group?.name || 'Personal'} · {assigneeLabel(task.assignments)} · Due{' '}
                     {formatDate(task.due_at)}
                   </Text>
                   <View style={styles.pills}>

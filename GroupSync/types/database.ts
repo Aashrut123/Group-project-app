@@ -88,7 +88,7 @@ export interface TaskAssignment {
 
 export interface Task {
   id: string;
-  group_id: string;
+  group_id: string | null;
   created_by: string;
   title: string;
   description: string;

@@ -90,7 +90,7 @@ export default function HomeScreen() {
               <Text style={styles.nextTitle}>{nextTask?.title || 'Nothing is waiting on you'}</Text>
               <Text style={styles.quiet}>
                 {nextTask
-                  ? `${nextTask.group?.name || 'Project'} · ${nextTask.due_at ? `due ${formatDate(nextTask.due_at)}` : 'no due date'}${overdue.length ? ` · ${overdue.length} overdue` : ''}`
+                  ? `${nextTask.group?.name || 'Personal'} · ${nextTask.due_at ? `due ${formatDate(nextTask.due_at)}` : 'no due date'}${overdue.length ? ` · ${overdue.length} overdue` : ''}`
                   : 'Add a task when you know the next piece of work.'}
               </Text>
               <View style={styles.actions}>
