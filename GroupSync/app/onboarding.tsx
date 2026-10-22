@@ -1,11 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
-import { LayoutAnimation, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { Button, Card, Chip, ErrorText, Field, Page, Pill, ProgressBar, SelectCard, TextButton } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { GOAL_PRESETS, PLANNING_STYLES, goalSummary, type PlanningStyle } from '@/lib/goals';
+import { easeLayout, usePrefersReducedMotion } from '@/lib/motion';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 
@@ -45,6 +46,7 @@ export default function OnboardingScreen() {
   const { user, profile, refreshProfile } = useAuth();
   const { width } = useWindowDimensions();
   const wide = width >= 720;
+  const reduceMotion = usePrefersReducedMotion();
   const [ready, setReady] = useState(editing);
   const [step, setStep] = useState(editing ? 1 : 0);
   const [goals, setGoals] = useState<string[]>(profile?.goals ?? []);
@@ -56,6 +58,10 @@ export default function OnboardingScreen() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const goTo = (next: number) => {
+    easeLayout(reduceMotion);
+    setStep(next);
+  };
 
   const steps = editing ? [1, 3] : [0, 1, 2, 3];
   const progress = Math.max(0, steps.indexOf(step));
@@ -217,7 +223,7 @@ export default function OnboardingScreen() {
             <Text style={styles.note}>
               The built-in planner can draft a schedule for you to review. A remote AI planner is used only when it is configured.
             </Text>
-            <Button title="Get started" onPress={() => setStep(1)} />
+            <Button title="Get started" onPress={() => goTo(1)} />
           </>
         ) : null}
 
@@ -245,9 +251,9 @@ export default function OnboardingScreen() {
               maxLength={200}
             />
             {error ? <ErrorText>{error}</ErrorText> : null}
-            <Button title="Continue" onPress={() => { setError(''); setStep(editing ? 3 : 2); }} />
-            {editing ? null : <Button title="Skip for now" onPress={() => { setError(''); setStep(2); }} secondary />}
-            {editing ? null : <TextButton title="Back" onPress={() => setStep(0)} />}
+            <Button title="Continue" onPress={() => { setError(''); goTo(editing ? 3 : 2); }} />
+            {editing ? null : <Button title="Skip for now" onPress={() => { setError(''); goTo(2); }} secondary />}
+            {editing ? null : <TextButton title="Back" onPress={() => goTo(0)} />}
           </>
         ) : null}
 
@@ -262,7 +268,7 @@ export default function OnboardingScreen() {
                 detail={item.detail}
                 selected={path === item.id}
                 onPress={() => {
-                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  easeLayout(reduceMotion);
                   setPath(item.id);
                   setError('');
                 }}
@@ -288,9 +294,9 @@ export default function OnboardingScreen() {
                 return;
               }
               setError('');
-              setStep(3);
+              goTo(3);
             }} />
-            <TextButton title="Back" onPress={() => setStep(1)} />
+            <TextButton title="Back" onPress={() => goTo(1)} />
           </>
         ) : null}
 
@@ -305,7 +311,7 @@ export default function OnboardingScreen() {
             <Card>
               <Text style={styles.featureTitle}>Goals</Text>
               <Text style={styles.note}>{goalSummary(goals, customGoal) || 'No goal selected. You can add one later.'}</Text>
-              <Button title="Edit goals" onPress={() => setStep(1)} secondary />
+              <Button title="Edit goals" onPress={() => goTo(1)} secondary />
             </Card>
             {editing ? null : (
               <Card>
@@ -315,7 +321,7 @@ export default function OnboardingScreen() {
                   {path === 'join' ? `Join with code ${code.trim() || '(missing)'}` : null}
                   {path === 'explore' ? 'Explore Home first. No project is created.' : null}
                 </Text>
-                <Button title="Change start" onPress={() => setStep(2)} secondary />
+                <Button title="Change start" onPress={() => goTo(2)} secondary />
               </Card>
             )}
             <Text style={styles.section}>Planning pace</Text>
@@ -327,7 +333,7 @@ export default function OnboardingScreen() {
             </View>
             {error ? <ErrorText>{error}</ErrorText> : null}
             <Button title={editing ? 'Save goals' : 'Finish'} onPress={() => void finish()} busy={busy} />
-            <TextButton title="Back" onPress={() => setStep(editing ? 1 : 2)} />
+            <TextButton title="Back" onPress={() => goTo(editing ? 1 : 2)} />
           </>
         ) : null}
       </ScrollView>

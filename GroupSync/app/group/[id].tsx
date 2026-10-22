@@ -25,6 +25,7 @@ import {
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { formatDate, formatTime } from '@/lib/format';
+import { easeLayout, usePrefersReducedMotion } from '@/lib/motion';
 import { formatDay, parseDay } from '@/lib/planner/dates';
 import { useWorkspace, updateTaskStatus } from '@/hooks/useWorkspace';
 import { completionPercent, milestoneTaskProgress, taskStatusLabel } from '@/lib/planner/status';
@@ -60,6 +61,7 @@ export default function GroupDetailScreen() {
   const [deadline, setDeadline] = useState<Date | null>(null);
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [openMilestoneId, setOpenMilestoneId] = useState<string | null>(null);
+  const reduceMotion = usePrefersReducedMotion();
   const [milestoneTitle, setMilestoneTitle] = useState('');
   const [milestoneDate, setMilestoneDate] = useState<Date | null>(null);
 
@@ -633,7 +635,10 @@ export default function GroupDetailScreen() {
                 <Text
                   accessibilityRole="button"
                   style={styles.itemTitle}
-                  onPress={() => setOpenMilestoneId(open ? null : milestone.id)}
+                  onPress={() => {
+                    easeLayout(reduceMotion);
+                    setOpenMilestoneId(open ? null : milestone.id);
+                  }}
                 >
                   {open ? '▾' : '▸'} {milestone.title}
                 </Text>
@@ -677,7 +682,10 @@ export default function GroupDetailScreen() {
                     </View>
                   </>
                 ) : (
-                  <Text style={styles.link} onPress={() => setOpenMilestoneId(milestone.id)}>Show tasks and actions</Text>
+                  <Text style={styles.link} onPress={() => {
+                    easeLayout(reduceMotion);
+                    setOpenMilestoneId(milestone.id);
+                  }}>Show tasks and actions</Text>
                 )}
               </Card>
               );

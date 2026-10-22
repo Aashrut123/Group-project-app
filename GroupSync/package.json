@@ -13,6 +13,7 @@
     "test": "node --experimental-strip-types --experimental-transform-types --import ./test/register.mjs --test lib/planner/planner.test.ts lib/reminders.test.ts lib/goals.test.ts lib/dependencies.test.ts"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "9.1.0",
     "@supabase/supabase-js": "^2.57.0",

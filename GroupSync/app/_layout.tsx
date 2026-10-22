@@ -28,6 +28,8 @@ export default function RootLayout() {
           headerTintColor: theme.colors.primary,
           headerTitleStyle: { color: theme.colors.ink, fontWeight: '800' },
           headerShadowVisible: false,
+          animation: 'fade',
+          animationDuration: 220,
           contentStyle: {
             backgroundColor: theme.colors.background,
           },
