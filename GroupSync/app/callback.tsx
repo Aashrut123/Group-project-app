@@ -116,6 +116,7 @@ export default function AuthCallbackScreen() {
   return (
     <Page>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
       >

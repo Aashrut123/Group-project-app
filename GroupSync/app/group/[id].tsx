@@ -9,20 +9,26 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 
+import { DateField } from '@/components/DateField';
 import {
   Button,
   Card,
   Chip,
   EmptyState,
   ErrorText,
+  Field,
   Loading,
   Page,
   Pill,
+  ProgressBar,
   Title,
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { formatDate, formatTime } from '@/lib/format';
-import { completionPercent } from '@/lib/planner/status';
+import { easeLayout, usePrefersReducedMotion } from '@/lib/motion';
+import { formatDay, parseDay } from '@/lib/planner/dates';
+import { useWorkspace, updateTaskStatus } from '@/hooks/useWorkspace';
+import { completionPercent, milestoneTaskProgress, taskStatusLabel } from '@/lib/planner/status';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 import type {
@@ -32,11 +38,13 @@ import type {
   Milestone,
   ProgressLog,
   Task,
+  TaskPriority,
 } from '@/types/database';
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
+  const { tasks: sharedTasks } = useWorkspace();
 
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<Membership[]>([]);
@@ -49,6 +57,13 @@ export default function GroupDetailScreen() {
   const [section, setSection] = useState<'overview' | 'tasks' | 'timeline' | 'team' | 'updates'>('overview');
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [logs, setLogs] = useState<ProgressLog[]>([]);
+  const [outcome, setOutcome] = useState('');
+  const [deadline, setDeadline] = useState<Date | null>(null);
+  const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [openMilestoneId, setOpenMilestoneId] = useState<string | null>(null);
+  const reduceMotion = usePrefersReducedMotion();
+  const [milestoneTitle, setMilestoneTitle] = useState('');
+  const [milestoneDate, setMilestoneDate] = useState<Date | null>(null);
 
   const load = useCallback(async () => {
     const [g, m, e, t] = await Promise.all([
@@ -70,6 +85,7 @@ export default function GroupDetailScreen() {
         .from('events')
         .select('*')
         .eq('group_id', id)
+        .gt('ends_at', new Date().toISOString())
         .order('starts_at')
         .limit(10),
 
@@ -77,8 +93,7 @@ export default function GroupDetailScreen() {
         .from('tasks')
         .select('*')
         .eq('group_id', id)
-        .order('created_at', { ascending: false })
-        .limit(10),
+        .order('created_at', { ascending: false }),
     ]);
 
     const issue = g.error || m.error || e.error || t.error;
@@ -87,14 +102,19 @@ export default function GroupDetailScreen() {
       setError(issue.message);
     }
 
-    setGroup(g.data as Group | null);
+    const loadedGroup = g.data as Group | null;
+    setGroup(loadedGroup);
+    setOutcome(loadedGroup?.outcome || '');
+    setDeadline(loadedGroup?.deadline ? parseDay(loadedGroup.deadline) : null);
+    setPriority(loadedGroup?.priority || 'medium');
     setMembers((m.data || []) as Membership[]);
     setEvents((e.data || []) as CalendarEvent[]);
     setTasks((t.data || []) as Task[]);
-    const [milestoneResult, logResult] = await Promise.all([
-      supabase.from('milestones').select('*').eq('group_id', id).order('due_on'),
-      supabase.from('progress_logs').select('*, profile:profiles(display_name)').eq('group_id', id).order('created_at', { ascending: false }).limit(20),
-    ]);
+    let milestoneResult = await supabase.from('milestones').select('*').eq('group_id', id).order('sort_order').order('due_on');
+    if (milestoneResult.error && /sort_order/.test(milestoneResult.error.message)) {
+      milestoneResult = await supabase.from('milestones').select('*').eq('group_id', id).order('due_on');
+    }
+    const logResult = await supabase.from('progress_logs').select('*, profile:profiles(display_name)').eq('group_id', id).order('created_at', { ascending: false }).limit(20);
     setMilestones(milestoneResult.error ? [] : (milestoneResult.data || []) as Milestone[]);
     setLogs(logResult.error ? [] : (logResult.data || []) as ProgressLog[]);
     setLoading(false);
@@ -139,12 +159,95 @@ export default function GroupDetailScreen() {
     return <Loading />;
   }
 
+  const projectTasks = tasks.map((task) => {
+    const live = sharedTasks.find((item) => item.id === task.id);
+    return live ? { ...task, status: live.status } : task;
+  });
+
   const myRole = members.find(
     member => member.user_id === user?.id
   )?.role;
 
   const canManage =
     myRole === 'owner' || myRole === 'admin';
+  const progress = completionPercent(projectTasks);
+
+  const saveProject = async () => {
+    setBusy(true);
+    setError('');
+    const { error: issue } = await supabase.from('groups').update({
+      outcome: outcome.trim(),
+      deadline: deadline ? formatDay(deadline) : null,
+      priority,
+    }).eq('id', id);
+    setBusy(false);
+    if (issue) setError(issue.message);
+    else await load();
+  };
+
+  const addMilestone = async () => {
+    const title = milestoneTitle.trim();
+    if (!title) {
+      setError('Name the milestone before saving it.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    const { error: issue } = await supabase.from('milestones').insert({
+      group_id: id,
+      title,
+      due_on: milestoneDate ? formatDay(milestoneDate) : null,
+      description: '',
+    });
+    setBusy(false);
+    if (issue) {
+      setError(issue.message);
+      return;
+    }
+    setMilestoneTitle('');
+    setMilestoneDate(null);
+    await load();
+  };
+
+  const moveMilestone = async (index: number, direction: -1 | 1) => {
+    const next = index + direction;
+    if (next < 0 || next >= milestones.length) return;
+    const current = milestones[index];
+    const other = milestones[next];
+    if (!current || !other) return;
+    setError('');
+    const first = await supabase.from('milestones').update({ sort_order: next }).eq('id', current.id);
+    if (first.error) {
+      setError(first.error.message.includes('sort_order')
+        ? 'Run the latest SQL migration in Supabase, then try again.'
+        : first.error.message);
+      return;
+    }
+    const second = await supabase.from('milestones').update({ sort_order: index }).eq('id', other.id);
+    if (second.error) setError(second.error.message);
+    else await load();
+  };
+
+  const toggleMilestone = async (milestone: Milestone) => {
+    setError('');
+    const { error: issue } = await supabase.from('milestones').update({
+      completed_at: milestone.completed_at ? null : new Date().toISOString(),
+    }).eq('id', milestone.id);
+    if (issue) setError(issue.message);
+    else await load();
+  };
+
+  const linkTask = async (taskId: string, milestoneId: string | null) => {
+    setError('');
+    const { error: issue } = await supabase.from('tasks').update({ milestone_id: milestoneId }).eq('id', taskId);
+    if (issue) {
+      setError(/milestone_id|schema cache|column/.test(issue.message)
+        ? 'Run the latest SQL migration in Supabase, then try again.'
+        : issue.message);
+      return;
+    }
+    setTasks((current) => current.map((task) => (task.id === taskId ? { ...task, milestone_id: milestoneId } : task)));
+  };
 
   const invite = async () => {
     setBusy(true);
@@ -304,13 +407,22 @@ export default function GroupDetailScreen() {
           </View>
         </View>
 
-        <Text style={styles.muted}>
-          {completionPercent(tasks, milestones.map((item) => ({ completed: Boolean(item.completed_at) })))}% complete
-          {group?.deadline ? ` · deadline ${formatDate(group.deadline)}` : ''}
-          {group?.outcome ? ` · ${group.outcome}` : ''}
-        </Text>
+        <View style={styles.progress}>
+          <ProgressBar
+            value={progress}
+            color={group?.color || theme.colors.primary}
+            label={projectTasks.length
+            ? `${progress}% of tasks finished${group?.deadline ? ` · deadline ${formatDate(group.deadline)}` : ''}${group?.outcome ? ` · ${group.outcome}` : ''}`
+            : `No tasks yet, so this stays at 0%${group?.deadline ? ` · deadline ${formatDate(group.deadline)}` : ''}`}
+          />
+        </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sections}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.sectionScroll}
+          contentContainerStyle={styles.sections}
+        >
           {([
             ['overview', 'Overview'],
             ['tasks', 'Tasks'],
@@ -411,10 +523,24 @@ export default function GroupDetailScreen() {
           </Card>
         ) : null}
 
+        {section === 'overview' && canManage ? (
+          <Card>
+            <Text style={styles.heading}>Project settings</Text>
+            <Field label="Intended outcome" value={outcome} onChangeText={setOutcome} multiline placeholder="What does done look like?" />
+            <DateField label="Deadline" value={deadline} onChange={setDeadline} />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+              {(['low', 'medium', 'high'] as const).map((value) => (
+                <Chip key={value} label={value} active={priority === value} onPress={() => setPriority(value)} />
+              ))}
+            </View>
+            <Button title={busy ? 'Saving…' : 'Save project'} onPress={() => void saveProject()} disabled={busy} secondary />
+          </Card>
+        ) : null}
+
         {section === 'overview' ? (
           <Card>
             <Text style={styles.heading}>Plan and adjust</Text>
-            <Button title="Generate a plan" onPress={() => router.push({ pathname: '/plan', params: { groupId: id } })} />
+            <Button title="Build a plan" onPress={() => router.push({ pathname: '/plan', params: { groupId: id } })} />
             <Button title="Propose a reschedule" onPress={() => router.push({ pathname: '/reschedule', params: { groupId: id } })} secondary />
             <Button title="Post a progress log" onPress={() => router.push({ pathname: '/progress', params: { groupId: id } })} secondary />
             {myRole === 'owner' ? (
@@ -489,8 +615,8 @@ export default function GroupDetailScreen() {
           ))
         ) : (
           <EmptyState
-            title="No group dates yet"
-            body="Add a meeting, deadline or event so everyone sees it."
+            title="Nothing coming up"
+            body="Meetings that have already ended stay on the calendar day you tap."
           />
         )}
 
@@ -500,12 +626,73 @@ export default function GroupDetailScreen() {
         {section === 'timeline' ? (
           <>
             <Text style={styles.heading}>Milestones</Text>
-            {milestones.length ? milestones.map((milestone) => (
+            {milestones.length ? milestones.map((milestone, index) => {
+              const linked = projectTasks.filter((task) => task.milestone_id === milestone.id);
+              const stats = milestoneTaskProgress(linked);
+              const open = openMilestoneId === milestone.id;
+              return (
               <Card key={milestone.id}>
-                <Text style={styles.itemTitle}>{milestone.title}</Text>
-                <Text style={styles.muted}>{milestone.due_on ? formatDate(milestone.due_on) : 'No date'}{milestone.completed_at ? ' · done' : ''}</Text>
+                <Text
+                  accessibilityRole="button"
+                  style={styles.itemTitle}
+                  onPress={() => {
+                    easeLayout(reduceMotion);
+                    setOpenMilestoneId(open ? null : milestone.id);
+                  }}
+                >
+                  {open ? '▾' : '▸'} {milestone.title}
+                </Text>
+                <Text style={styles.muted}>
+                  {milestone.due_on ? formatDate(milestone.due_on) : 'No date'}
+                  {milestone.completed_at ? ' · marked done' : ''}
+                  {stats.total ? ` · ${stats.done} of ${stats.total} tasks finished` : ' · no tasks linked yet'}
+                </Text>
+                {stats.total ? <ProgressBar value={stats.percent} color={group?.color || theme.colors.primary} /> : null}
+                {open ? (
+                  <>
+                    {stats.total > 0 && stats.done === stats.total && !milestone.completed_at ? (
+                      <Text style={styles.muted}>All linked tasks are finished. Mark the milestone done when you are ready.</Text>
+                    ) : null}
+                    {linked.map((task) => (
+                      <Text key={task.id} style={styles.link} onPress={() => router.push(`/task/${task.id}`)}>
+                        {taskStatusLabel(task.status)} · {task.title}
+                      </Text>
+                    ))}
+                    <Text style={styles.muted}>
+                      {projectTasks.length ? 'Tap a task to link it here. Tap it again to unlink it. A task can belong to one milestone.' : 'Add a task, then link it here.'}
+                    </Text>
+                    {projectTasks.length ? (
+                      <View style={styles.taskChoices}>
+                        {projectTasks.map((task) => (
+                          <Chip
+                            key={task.id}
+                            label={task.title}
+                            active={task.milestone_id === milestone.id}
+                            onPress={() => void linkTask(task.id, task.milestone_id === milestone.id ? null : milestone.id)}
+                          />
+                        ))}
+                      </View>
+                    ) : null}
+                    <Text style={styles.link} onPress={() => void toggleMilestone(milestone)}>
+                      {milestone.completed_at ? 'Mark not done' : 'Mark done'}
+                    </Text>
+                    <View style={styles.section}>
+                      {index > 0 ? <Text style={styles.link} onPress={() => void moveMilestone(index, -1)}>Move up</Text> : <Text />}
+                      {index < milestones.length - 1 ? <Text style={styles.link} onPress={() => void moveMilestone(index, 1)}>Move down</Text> : null}
+                    </View>
+                  </>
+                ) : (
+                  <Text style={styles.link} onPress={() => {
+                    easeLayout(reduceMotion);
+                    setOpenMilestoneId(milestone.id);
+                  }}>Show tasks and actions</Text>
+                )}
               </Card>
-            )) : <EmptyState title="No milestones yet" body="A reviewed plan can add milestones, or you can keep using tasks and calendar items." />}
+              );
+            }) : <EmptyState title="No milestones yet" body="Add a checkpoint when the project has a meaningful stage. Tasks stay even if you delete a milestone later. Project progress counts finished tasks only." />}
+            <Field label="Milestone" value={milestoneTitle} onChangeText={setMilestoneTitle} placeholder="e.g. Working prototype" maxLength={140} />
+            <DateField label="Target date" value={milestoneDate} onChange={setMilestoneDate} />
+            <Button title="Add milestone" onPress={() => void addMilestone()} busy={busy} secondary />
           </>
         ) : null}
 
@@ -524,8 +711,8 @@ export default function GroupDetailScreen() {
           </Text>
         </View>
 
-        {tasks.length ? (
-          tasks.map(task => (
+        {projectTasks.length ? (
+          projectTasks.map(task => (
             <Card
               key={task.id}
               style={styles.item}
@@ -545,8 +732,19 @@ export default function GroupDetailScreen() {
                 }
                 style={styles.muted}
               >
-                {task.status.replace('_', ' ')} ·{' '}
+                {taskStatusLabel(task.status)} ·{' '}
                 {formatDate(task.due_at)}
+                {task.milestone_id ? ` · ${milestones.find((item) => item.id === task.milestone_id)?.title || 'Milestone'}` : ''}
+              </Text>
+              <Text
+                onPress={() => {
+                  void updateTaskStatus(task.id, task.status === 'completed' ? 'todo' : 'completed').catch((cause: unknown) => {
+                    setError(cause instanceof Error ? cause.message : 'Could not update the task.');
+                  });
+                }}
+                style={styles.link}
+              >
+                {task.status === 'completed' ? 'Mark not finished' : 'Mark finished'}
               </Text>
             </Card>
           ))
@@ -599,7 +797,16 @@ const styles = {
   },
   sections: {
     gap: 8,
-    paddingBottom: 12,
+    alignItems: 'center',
+    paddingRight: 8,
+  },
+  progress: {
+    marginBottom: 14,
+  },
+  sectionScroll: {
+    height: 48,
+    marginBottom: 8,
+    flexGrow: 0,
   },
   section: {
     flexDirection: 'row',
@@ -607,6 +814,12 @@ const styles = {
     justifyContent: 'space-between',
     marginTop: 8,
     marginBottom: 8,
+  },
+  taskChoices: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
   },
   heading: {
     color: theme.colors.ink,

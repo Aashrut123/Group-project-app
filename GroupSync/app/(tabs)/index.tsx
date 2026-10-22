@@ -3,11 +3,12 @@ import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, Card, EmptyState, ErrorText, Page, Pill } from '@/components/ui';
+import { Button, Card, EmptyState, ErrorText, Loading, Page, Pill, ProgressBar, Section } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { findConflicts } from '@/lib/planner/conflicts';
-import { completionPercent } from '@/lib/planner/status';
+import { isStillScheduled } from '@/lib/planner/dates';
+import { completionPercent, isOpenStatus } from '@/lib/planner/status';
 import { formatDate, formatTime } from '@/lib/format';
 import { theme } from '@/lib/theme';
 
@@ -17,14 +18,14 @@ export default function HomeScreen() {
 
   const activeGroups = groups.filter((group) => group.status !== 'archived');
   const mine = tasks.filter((task) => task.assignments?.some((assignment) => assignment.user_id === user?.id) || task.created_by === user?.id);
-  const openMine = mine.filter((task) => task.status !== 'completed');
+  const openMine = mine.filter((task) => isOpenStatus(task.status));
   const nextTask = [...openMine].sort((a, b) => (a.due_at || '9999').localeCompare(b.due_at || '9999'))[0];
   const overdue = openMine.filter((task) => task.due_at && task.due_at < new Date().toISOString());
-  const upcomingEvents = events.slice(0, 3);
+  const upcomingEvents = events.filter((event) => isStillScheduled(event.ends_at)).slice(0, 3);
   const unread = notifications.filter((item) => !item.read_at).length;
 
   const conflicts = useMemo(() => findConflicts([
-    ...events.map((event) => ({
+    ...events.filter((event) => isStillScheduled(event.ends_at)).map((event) => ({
       id: event.id,
       title: event.title,
       start: event.starts_at,
@@ -43,7 +44,7 @@ export default function HomeScreen() {
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1 }}>
-        <Page><Text style={styles.quiet}>Loading your workspace…</Text></Page>
+        <Loading />
       </SafeAreaView>
     );
   }
@@ -78,21 +79,23 @@ export default function HomeScreen() {
           {!activeGroups.length ? (
             <Card>
               <Text style={styles.cardTitle}>Start with one project</Text>
-              <Text style={styles.quiet}>Create a team workspace, then invite people with a single-use code. The planner can wait until the project has a deadline.</Text>
+              <Text style={styles.quiet}>
+                Create a project when you are ready. You can invite people later, or use GroupSync on your own.
+              </Text>
               <Button title="Create a project" onPress={() => router.push('/create-group')} />
             </Card>
           ) : (
-            <Card style={styles.next}>
-              <Text style={styles.kicker}>WORK ON THIS NEXT</Text>
+            <Card>
+              <Text style={styles.kicker}>Work on this next</Text>
               <Text style={styles.nextTitle}>{nextTask?.title || 'Nothing is waiting on you'}</Text>
-              <Text style={styles.nextMeta}>
+              <Text style={styles.quiet}>
                 {nextTask
-                  ? `${nextTask.group?.name || 'Project'} · ${nextTask.due_at ? `due ${formatDate(nextTask.due_at)}` : 'no due date'}`
-                  : 'Open tasks when you want to add the next piece of work.'}
+                  ? `${nextTask.group?.name || 'Personal'} · ${nextTask.due_at ? `due ${formatDate(nextTask.due_at)}` : 'no due date'}${overdue.length ? ` · ${overdue.length} overdue` : ''}`
+                  : 'Add a task when you know the next piece of work.'}
               </Text>
               <View style={styles.actions}>
                 {nextTask ? <Button title="Open task" onPress={() => router.push(`/task/${nextTask.id}`)} /> : null}
-                <Button title="Plan with AI" onPress={() => router.push({ pathname: '/plan', params: { groupId: activeGroups[0]?.id } })} secondary />
+                <Button title="Build a plan" onPress={() => router.push({ pathname: '/plan', params: { groupId: activeGroups[0]?.id } })} secondary />
               </View>
             </Card>
           )}
@@ -104,7 +107,7 @@ export default function HomeScreen() {
               ['Log', '/progress'],
               ['Notices', '/notifications'],
             ].map(([label, href]) => (
-              <Pressable key={label} accessibilityRole="button" onPress={() => router.push(href as '/create-task')} style={styles.quickItem}>
+              <Pressable key={label} accessibilityRole="button" onPress={() => router.push(href as '/create-task')} style={({ pressed }) => [styles.quickItem, pressed && styles.pressed]}>
                 <Text style={styles.quickText}>{label}{label === 'Notices' && unread ? ` ${unread}` : ''}</Text>
               </Pressable>
             ))}
@@ -120,7 +123,7 @@ export default function HomeScreen() {
             </Card>
           ) : null}
 
-          <Text style={styles.section}>Coming up</Text>
+          <Section>Coming up</Section>
           {upcomingEvents.length ? upcomingEvents.map((event) => (
             <Pressable key={event.id} accessibilityRole="button" onPress={() => router.push(`/event/${event.id}`)}>
               <Card style={styles.rowCard}>
@@ -134,7 +137,7 @@ export default function HomeScreen() {
             </Pressable>
           )) : <EmptyState title="No upcoming events" body="Meetings and deadlines from your projects show up here." />}
 
-          <Text style={styles.section}>Projects</Text>
+          <Section>Projects</Section>
           {activeGroups.slice(0, 3).map((group) => {
             const groupTasks = tasks.filter((task) => task.group_id === group.id);
             const percent = completionPercent(groupTasks);
@@ -142,13 +145,17 @@ export default function HomeScreen() {
               <Pressable key={group.id} accessibilityRole="button" onPress={() => router.push(`/group/${group.id}`)}>
                 <Card>
                   <Text style={styles.cardTitle}>{group.name}</Text>
-                  <Text style={styles.quiet}>{percent}% of tasks complete{group.deadline ? ` · due ${formatDate(group.deadline)}` : ''}</Text>
+                  <ProgressBar
+                    value={percent}
+                    color={group.color || theme.colors.primary}
+                    label={`${percent}% of tasks complete${group.deadline ? ` · due ${formatDate(group.deadline)}` : ''}`}
+                  />
                 </Card>
               </Pressable>
             );
           })}
 
-          <Text style={styles.section}>Team updates</Text>
+          <Section>Team updates</Section>
           {logs.length ? logs.slice(0, 3).map((log) => (
             <Card key={log.id}>
               <Text style={styles.cardTitle}>{log.profile?.display_name || 'Teammate'}</Text>
@@ -172,15 +179,13 @@ const styles = {
   avatar: { width: 44, height: 44, borderRadius: 14, backgroundColor: theme.colors.mint, alignItems: 'center' as const, justifyContent: 'center' as const },
   avatarImage: { width: 44, height: 44, borderRadius: 14 },
   avatarText: { color: theme.colors.primaryDark, fontWeight: '800' as const, fontSize: 18 },
-  next: { backgroundColor: theme.colors.primaryDark, borderColor: theme.colors.primaryDark },
-  kicker: { color: '#C9E4DE', fontSize: 11, fontWeight: '800' as const, letterSpacing: 0.8 },
-  nextTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800' as const, marginTop: 8 },
-  nextMeta: { color: '#D7EBE7', marginTop: 6, lineHeight: 18 },
+  kicker: { color: theme.colors.primary, fontSize: 12, fontWeight: '800' as const, letterSpacing: 0.3 },
+  nextTitle: { color: theme.colors.ink, fontSize: 22, fontWeight: '800' as const, marginTop: 6 },
+  pressed: { opacity: 0.72 },
   actions: { gap: 4 },
   quick: { flexDirection: 'row' as const, gap: 8, marginBottom: 12 },
   quickItem: { flex: 1, backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, paddingVertical: 12, alignItems: 'center' as const },
   quickText: { color: theme.colors.primaryDark, fontWeight: '800' as const, fontSize: 12 },
-  section: { color: theme.colors.ink, fontSize: 18, fontWeight: '800' as const, marginTop: 8, marginBottom: 8 },
   cardTitle: { color: theme.colors.ink, fontWeight: '800' as const, fontSize: 15 },
   rowCard: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 10 },
   bar: { width: 4, height: 36, borderRadius: 4 },

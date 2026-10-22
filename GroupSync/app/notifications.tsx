@@ -19,8 +19,8 @@ export default function NotificationsScreen() {
       if (issue) setError(issue.message);
       else await refresh();
     }
-    if (item.href.startsWith('/task/') || item.href.startsWith('/group/')) {
-      router.push(item.href as '/task/[id]' | '/group/[id]');
+    if (item.href.startsWith('/task/') || item.href.startsWith('/group/') || item.href.startsWith('/event/')) {
+      router.push(item.href as '/task/[id]' | '/group/[id]' | '/event/[id]');
     }
   };
 
@@ -34,8 +34,8 @@ export default function NotificationsScreen() {
 
   return (
     <Page>
-      <ScrollView contentContainerStyle={{ paddingBottom: 28 }}>
-        <Text style={styles.lead}>These are in-app notices stored for your account. GroupSync is not sending push notifications.</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
+        <Text style={styles.lead}>This list stays inside GroupSync. Phone alerts for due tasks and upcoming meetings are turned on from Profile.</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {notifications.length ? notifications.map((item) => (
           <Card key={item.id}>
@@ -44,7 +44,7 @@ export default function NotificationsScreen() {
             <Text style={styles.meta}>{formatDate(item.created_at)}{item.read_at ? '' : ' · New'}</Text>
           </Card>
         )) : (
-          <EmptyState title="No notices yet" body="Assignments, progress logs, and meetings will show up here after the latest database migration is applied." />
+          <EmptyState title="No notices yet" body="Assignments, progress logs, and new meetings will show up here." />
         )}
         {notifications.some((item) => !item.read_at) ? <Button title="Mark all read" onPress={() => void markAll()} secondary /> : null}
       </ScrollView>

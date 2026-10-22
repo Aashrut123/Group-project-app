@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { ScrollView, Text } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
+import { DateField } from '@/components/DateField';
 import { Button, Card, Chip, ErrorText, Field, Page, Pill } from '@/components/ui';
 import { useWorkspace } from '@/hooks/useWorkspace';
-import { todayDay } from '@/lib/planner/dates';
+import { formatDay, parseDay, todayDay } from '@/lib/planner/dates';
 import { acceptedChanges, proposeReschedule } from '@/lib/planner/reschedule';
 import type { PlannerMember, RescheduleProposal, RescheduleTask } from '@/lib/planner/types';
 import { supabase } from '@/lib/supabase';
@@ -15,7 +16,7 @@ export default function RescheduleScreen() {
   const params = useLocalSearchParams<{ groupId?: string }>();
   const { groups, tasks, refresh } = useWorkspace();
   const [groupId, setGroupId] = useState(params.groupId ?? '');
-  const [deadline, setDeadline] = useState('');
+  const [deadline, setDeadline] = useState<Date | null>(null);
   const [reason, setReason] = useState('');
   const [proposal, setProposal] = useState<RescheduleProposal | null>(null);
   const [sourceTasks, setSourceTasks] = useState<RescheduleTask[]>([]);
@@ -68,7 +69,7 @@ export default function RescheduleScreen() {
         availableWeekdays: [...new Set(((windows.data ?? []) as { user_id: string; weekday: number }[]).filter((row) => row.user_id === member.user_id).map((row) => row.weekday))],
         unavailable: ((away.data ?? []) as UnavailablePeriod[]).filter((row) => row.user_id === member.user_id).map((row) => ({ start: row.starts_on, end: row.ends_on })),
       }));
-      const nextDeadline = deadline || group.deadline || '';
+      const nextDeadline = deadline ? formatDay(deadline) : group.deadline || '';
       const next = proposeReschedule({
         tasks: mapped,
         members: plannerMembers,
@@ -112,14 +113,14 @@ export default function RescheduleScreen() {
 
   return (
     <Page>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 28 }}>
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 28 }}>
         <Text style={styles.lead}>Preview a new set of task deadlines. Nothing moves until you accept it.</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
           {groups.filter((group) => group.status !== 'archived').map((group) => (
-            <Chip key={group.id} label={group.name} active={group.id === groupId} onPress={() => { setGroupId(group.id); setDeadline(group.deadline || ''); }} />
+            <Chip key={group.id} label={group.name} active={group.id === groupId} onPress={() => { setGroupId(group.id); setDeadline(group.deadline ? parseDay(group.deadline) : null); }} />
           ))}
         </ScrollView>
-        <Field label="Deadline to plan against" value={deadline} onChangeText={setDeadline} placeholder="YYYY-MM-DD" autoCapitalize="none" />
+        <DateField label="Deadline to plan against" value={deadline} onChange={setDeadline} />
         <Field label="What changed" value={reason} onChangeText={setReason} placeholder="A teammate is unavailable, or the deadline moved" />
         {error ? <ErrorText>{error}</ErrorText> : null}
         <Button title={busy ? 'Working…' : 'Preview changes'} onPress={() => void preview()} disabled={busy} />

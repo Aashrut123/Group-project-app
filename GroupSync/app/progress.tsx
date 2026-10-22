@@ -47,7 +47,7 @@ export default function ProgressScreen() {
 
   return (
     <Page>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 28 }}>
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 28 }}>
         <Text style={styles.lead}>One to three lines is enough. Teammates see this on the project timeline.</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
           {groups.filter((group) => group.status !== 'archived').map((group) => (

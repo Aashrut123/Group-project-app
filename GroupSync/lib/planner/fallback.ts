@@ -1,3 +1,4 @@
+import { phasesForFocus } from '../goals';
 import { addDays, daySpan, eachDay, formatDay, parseDay } from './dates';
 import type { GeneratedPlan, PlannerInput, PlannerMember, PlanPriority, PlanTask } from './types';
 
@@ -26,11 +27,13 @@ export function buildFallbackPlan(input: PlannerInput): GeneratedPlan {
   const start = parseDay(input.startDate) as Date;
   const deadline = parseDay(input.deadline) as Date;
   const span = Math.max(1, daySpan(start, deadline));
-  const bufferDays = Math.max(1, Math.floor(span * 0.15));
+  const pace = input.pace === 'sprint' || input.pace === 'flexible' ? input.pace : 'steady';
+  const bufferRatio = pace === 'sprint' ? 0.05 : pace === 'flexible' ? 0.25 : 0.15;
+  const bufferDays = Math.max(1, Math.floor(span * bufferRatio));
   const scheduleEnd = span > 3 ? addDays(deadline, -bufferDays) : deadline;
   const effectiveEnd = scheduleEnd < start ? deadline : scheduleEnd;
 
-  const phaseNames = span < 10
+  const phaseNames = phasesForFocus(input.focus, span) ?? (span < 10
     ? [
         { name: 'Frame', summary: 'Agree on the outcome, constraints, and who owns the first slice of work.' },
         { name: 'Build', summary: 'Do the core work in small sessions that fit the team’s available hours.' },
@@ -41,7 +44,7 @@ export function buildFallbackPlan(input: PlannerInput): GeneratedPlan {
         { name: 'Build', summary: 'Produce the main deliverable in dependency order.' },
         { name: 'Review', summary: 'Check quality, unblock teammates, and adjust the remaining work.' },
         { name: 'Deliver', summary: 'Finish, document, and hold the final checkpoint before the deadline.' },
-      ];
+      ]);
 
   const seeds: { title: string; description: string; phase: string; priority: PlanPriority; minutes: number }[] = [
     {
@@ -120,12 +123,13 @@ export function buildFallbackPlan(input: PlannerInput): GeneratedPlan {
     const assignee = chooseAssignee(seed.title);
     load.set(assignee.id, (load.get(assignee.id) ?? 0) + seed.minutes);
     const days = workableDays(assignee, start, effectiveEnd);
-    const slot = days.length
-      ? days[Math.min(days.length - 1, Math.floor(((index + 1) / seeds.length) * (days.length - 1)))]
-      : effectiveEnd;
-    const startSlot = days.length
-      ? days[Math.min(days.length - 1, Math.floor((index / seeds.length) * (days.length - 1)))]
-      : start;
+    const place = (offset: number) => {
+      const linear = seeds.length <= 1 ? 1 : offset / seeds.length;
+      const shaped = pace === 'sprint' ? linear * 0.72 : linear;
+      return days[Math.min(days.length - 1, Math.floor(shaped * (days.length - 1)))];
+    };
+    const slot = days.length ? place(index + 1) : effectiveEnd;
+    const startSlot = days.length ? place(index) : start;
     const alreadyTracked = existingOpen.some((task) => task.title.toLowerCase() === seed.title.toLowerCase())
       || existingDone.some((task) => task.title.toLowerCase() === seed.title.toLowerCase());
     const phaseIndex = Math.min(phaseNames.length - 1, Math.floor((index / seeds.length) * phaseNames.length));
@@ -204,6 +208,11 @@ export function buildFallbackPlan(input: PlannerInput): GeneratedPlan {
       'Durations are estimates, not recorded work.',
       'A due date is a deadline, not a scheduled work block.',
       'Completed tasks already on the board are left unchanged.',
+      pace === 'sprint'
+        ? 'Sprint pacing places work earlier and keeps a shorter buffer.'
+        : pace === 'flexible'
+          ? 'Flexible pacing spreads work later and keeps a longer buffer.'
+          : 'Steady pacing spreads work evenly across open days.',
       input.constraints ? `Constraints considered: ${input.constraints}` : 'No extra constraints were provided.',
       existingDone.length ? `${existingDone.length} completed task${existingDone.length === 1 ? '' : 's'} were kept as history and not regenerated.` : 'No completed work was on the board yet.',
     ],

@@ -2,41 +2,45 @@ import React, { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { Button, Card, Chip, ErrorText, Field, Page, Pill } from '@/components/ui';
+import { DateField } from '@/components/DateField';
+import { Button, Card, Chip, ErrorText, Field, Page, Pill, Section } from '@/components/ui';
+import { useAuth } from '@/features/auth/AuthProvider';
 import { saveReviewedPlan } from '@/features/plans/savePlan';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { generatePlan } from '@/lib/planner/generate';
 import type { GeneratedPlan, PlannerMember } from '@/lib/planner/types';
-import { todayDay } from '@/lib/planner/dates';
+import { formatDay, parseDay, todayDay } from '@/lib/planner/dates';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 import type { Membership, UnavailablePeriod } from '@/types/database';
 
 export default function PlanScreen() {
   const params = useLocalSearchParams<{ groupId?: string }>();
+  const { profile } = useAuth();
   const { groups, tasks, refresh } = useWorkspace();
   const [groupId, setGroupId] = useState(params.groupId ?? '');
   const [outcome, setOutcome] = useState('');
-  const [startDate, setStartDate] = useState(todayDay());
-  const [deadline, setDeadline] = useState('');
+  const [startDate, setStartDate] = useState<Date | null>(parseDay(todayDay()));
+  const [deadline, setDeadline] = useState<Date | null>(null);
   const [hours, setHours] = useState('6');
   const [constraints, setConstraints] = useState('');
   const [milestones, setMilestones] = useState('');
   const [plan, setPlan] = useState<GeneratedPlan | null>(null);
   const [included, setIncluded] = useState<boolean[]>([]);
   const [includeMeetings, setIncludeMeetings] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<'build' | 'save' | null>(null);
   const [error, setError] = useState('');
   const [savedNote, setSavedNote] = useState('');
 
   const selectedGroup = groups.find((group) => group.id === groupId);
 
   const build = async () => {
+    if (busy) return;
     if (!groupId) {
       setError('Choose a project first.');
       return;
     }
-    setBusy(true);
+    setBusy('build');
     setError('');
     setSavedNote('');
     try {
@@ -77,8 +81,8 @@ export default function PlanScreen() {
         {
           title: selectedGroup?.name || 'Project',
           outcome: outcome.trim() || selectedGroup?.outcome || selectedGroup?.description || '',
-          startDate: startDate || selectedGroup?.starts_on || todayDay(),
-          deadline: deadline || selectedGroup?.deadline || '',
+          startDate: formatDay(startDate ?? parseDay(selectedGroup?.starts_on || todayDay()) ?? new Date()),
+          deadline: deadline ? formatDay(deadline) : selectedGroup?.deadline || '',
           priority: selectedGroup?.priority || 'medium',
           weeklyHoursDefault: weekly,
           constraints,
@@ -93,8 +97,11 @@ export default function PlanScreen() {
             assigneeId: task.assignments?.[0]?.user_id ?? null,
             estimatedMinutes: task.estimated_minutes ?? undefined,
           })),
+          focus: profile?.goals?.[0],
+          pace: profile?.planning_style,
         },
         {
+          useAi: process.env.EXPO_PUBLIC_AI_ENABLED === 'true',
           supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
           accessToken: session.data.session?.access_token,
           apiKey: isSupabaseConfigured ? process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY : undefined,
@@ -106,13 +113,13 @@ export default function PlanScreen() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not build a plan.');
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
 
   const save = async () => {
-    if (!plan || !groupId) return;
-    setBusy(true);
+    if (!plan || !groupId || busy) return;
+    setBusy('save');
     setError('');
     const chosen = plan.tasks.filter((_, index) => included[index]);
     const result = await saveReviewedPlan({
@@ -120,9 +127,16 @@ export default function PlanScreen() {
       plan,
       tasks: chosen,
       meetings: includeMeetings ? plan.meetings : [],
-      input: { outcome, startDate, deadline, hours, constraints, milestones },
+        input: {
+          outcome,
+          startDate: startDate ? formatDay(startDate) : '',
+          deadline: deadline ? formatDay(deadline) : '',
+          hours,
+          constraints,
+          milestones,
+        },
     });
-    setBusy(false);
+    setBusy(null);
     if (result.error) {
       setError(result.error);
       return;
@@ -137,7 +151,7 @@ export default function PlanScreen() {
 
   return (
     <Page>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
         <Text style={styles.lead}>
           Describe the project. You will review every task before anything is saved.
         </Text>
@@ -150,56 +164,70 @@ export default function PlanScreen() {
               onPress={() => {
                 setGroupId(group.id);
                 setOutcome(group.outcome || group.description || '');
-                setDeadline(group.deadline || '');
-                setStartDate(group.starts_on || todayDay());
+                setDeadline(group.deadline ? parseDay(group.deadline) : null);
+                setStartDate(group.starts_on ? parseDay(group.starts_on) : parseDay(todayDay()));
               }}
             />
           ))}
         </ScrollView>
         <Field label="Desired outcome" value={outcome} onChangeText={setOutcome} multiline placeholder="What should be true when this project is done?" />
-        <Field label="Start date" value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" autoCapitalize="none" />
-        <Field label="Deadline" value={deadline} onChangeText={setDeadline} placeholder="YYYY-MM-DD" autoCapitalize="none" />
+        <DateField label="Start date" value={startDate} onChange={setStartDate} />
+        <DateField label="Deadline" value={deadline} onChange={setDeadline} />
         <Field label="Default hours each person can give per week" value={hours} onChangeText={setHours} keyboardType="number-pad" />
         <Field label="Constraints and blockers" value={constraints} onChangeText={setConstraints} multiline placeholder="Exams, parts on order, skills the team does not have" />
         <Field label="Milestones, one per line" value={milestones} onChangeText={setMilestones} multiline placeholder={'Prototype chassis | 2026-11-10\nDemo video'} />
         {error ? <ErrorText>{error}</ErrorText> : null}
-        <Button title={busy ? 'Working…' : 'Generate plan'} onPress={() => void build()} disabled={busy} />
+        <Button title={plan ? 'Build again' : 'Build plan'} onPress={() => void build()} busy={busy === 'build'} disabled={busy === 'save'} />
 
         {plan ? (
           <View>
-            <Card>
-              <Pill color={plan.source === 'ai' ? theme.colors.mint : theme.colors.warningBg}>
-                {plan.source === 'ai' ? 'AI plan' : 'Built-in planner'}
+            <Section>Proposed schedule</Section>
+            <Card style={plan.source === 'ai' ? styles.aiCard : styles.builtinCard}>
+              <Pill tone={plan.source === 'ai' ? 'active' : 'medium'}>
+                {plan.source === 'ai' ? 'Remote planner' : 'Built-in planner'}
               </Pill>
+              <Text style={styles.sourceNote}>
+                {plan.source === 'ai'
+                  ? 'This draft came from the remote planner. Nothing is saved until you approve it.'
+                  : 'This draft came from the built-in planner. Nothing is saved until you approve it.'}
+              </Text>
               <Text style={styles.summary}>{plan.summary}</Text>
               {plan.notices.map((notice) => (
                 <Text key={notice} style={styles.note}>{notice}</Text>
               ))}
-              <Text style={styles.meta}>{plan.feasible ? 'The planner considers this feasible.' : 'The planner does not consider this feasible as written.'}</Text>
+              <View style={styles.pillGap}>
+                <Pill tone={plan.feasible ? 'done' : 'blocked'}>
+                  {plan.feasible ? 'Feasible' : 'Does not fit'}
+                </Pill>
+              </View>
             </Card>
-            {plan.assumptions.map((item) => <Text key={item} style={styles.note}>Assumption: {item}</Text>)}
+            {plan.assumptions.length ? <Section>Assumptions</Section> : null}
+            {plan.assumptions.map((item) => <Text key={item} style={styles.note}>{item}</Text>)}
+            {plan.risks.length ? <Section>Risks</Section> : null}
             {plan.risks.map((item) => <Text key={item} style={styles.risk}>{item}</Text>)}
+            <Section>Tasks to review</Section>
+            <Text style={styles.lead}>Included tasks are saved. Skipped tasks stay off the project.</Text>
             {plan.tasks.map((task, index) => (
-              <Card key={`${task.title}-${index}`}>
+              <Card key={`${task.title}-${index}`} style={included[index] ? styles.keep : styles.skip}>
                 <Text style={styles.taskTitle}>{task.title}</Text>
                 <Text style={styles.note}>{task.phase} · {task.assigneeName} · {task.estimatedMinutes} min · due {task.dueDate}</Text>
-                <Text style={styles.note}>{task.microGoals.join(' · ')}</Text>
+                {task.microGoals.length ? <Text style={styles.note}>{task.microGoals.join(' · ')}</Text> : null}
                 <Chip
-                  label={included[index] ? 'Will save' : 'Skip'}
+                  label={included[index] ? 'Included' : 'Skipped'}
                   active={Boolean(included[index])}
                   onPress={() => setIncluded((current) => current.map((value, itemIndex) => itemIndex === index ? !value : value))}
                 />
               </Card>
             ))}
+            <Section>Meetings</Section>
             <Card>
-              <Text style={styles.taskTitle}>Suggested meetings</Text>
               <Text style={styles.note}>These are proposals. They are not added to the calendar unless you include them.</Text>
               {plan.meetings.map((meeting) => (
                 <Text key={meeting.title} style={styles.note}>{meeting.title}: {meeting.reason}</Text>
               ))}
               <Chip label={includeMeetings ? 'Include meetings' : 'Leave meetings off'} active={includeMeetings} onPress={() => setIncludeMeetings((value) => !value)} />
             </Card>
-            <Button title={busy ? 'Saving…' : 'Save reviewed plan'} onPress={() => void save()} disabled={busy} />
+            <Button title="Save reviewed plan" onPress={() => void save()} busy={busy === 'save'} disabled={busy === 'build'} />
           </View>
         ) : null}
         {savedNote ? (
@@ -214,11 +242,16 @@ export default function PlanScreen() {
 }
 
 const styles = {
-  lead: { color: theme.colors.muted, lineHeight: 20, marginBottom: 12 },
+  lead: { color: theme.colors.muted, fontSize: theme.type.body, lineHeight: 22, marginBottom: 12 },
   row: { gap: 8, paddingBottom: 12 },
-  summary: { color: theme.colors.ink, fontWeight: '700' as const, marginTop: 8, lineHeight: 20 },
-  note: { color: theme.colors.muted, fontSize: 13, lineHeight: 18, marginTop: 6 },
-  risk: { color: theme.colors.warning, fontSize: 13, lineHeight: 18, marginTop: 6 },
-  meta: { color: theme.colors.ink, marginTop: 8, fontSize: 13 },
-  taskTitle: { color: theme.colors.ink, fontWeight: '800' as const, fontSize: 15 },
+  summary: { color: theme.colors.ink, fontWeight: '700' as const, marginTop: 8, lineHeight: 22, fontSize: theme.type.body },
+  note: { color: theme.colors.muted, fontSize: theme.type.caption, lineHeight: 18, marginTop: 6 },
+  risk: { color: theme.colors.warning, fontSize: theme.type.caption, lineHeight: 18, marginTop: 6 },
+  pillGap: { marginTop: 10 },
+  taskTitle: { color: theme.colors.ink, fontWeight: '700' as const, fontSize: theme.type.body },
+  sourceNote: { color: theme.colors.muted, fontSize: theme.type.caption, lineHeight: 18, marginTop: 8 },
+  aiCard: { borderColor: theme.colors.blue },
+  builtinCard: { borderColor: theme.colors.primary },
+  keep: { borderLeftWidth: 3, borderLeftColor: theme.colors.primary },
+  skip: { opacity: 0.72 },
 };

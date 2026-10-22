@@ -1,7 +1,7 @@
 
-import React, { useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
 
 import {
   Button,
@@ -16,13 +16,18 @@ import {
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { findConflicts } from '@/lib/planner/conflicts';
+import { isStillScheduled, overlapsLocalDay } from '@/lib/planner/dates';
 import { formatDate, formatTime } from '@/lib/format';
 import { theme } from '@/lib/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function CalendarScreen() {
   const { user } = useAuth();
-  const { groups, events, tasks, unavailable, loading, error } = useWorkspace();
+  const { groups, events, tasks, unavailable, loading, error, refresh } = useWorkspace();
+
+  useFocusEffect(useCallback(() => {
+    void refresh();
+  }, [refresh]));
 
   const [selected, setSelected] = useState<string | null>(null);
   const [view, setView] = useState<'month' | 'week' | 'agenda'>('month');
@@ -31,9 +36,8 @@ export default function CalendarScreen() {
 
   const filtered = useMemo(
     () =>
-      selected
-        ? events.filter(event => event.group_id === selected)
-        : events,
+      (selected ? events.filter(event => event.group_id === selected) : events)
+        .filter(event => isStillScheduled(event.ends_at)),
     [events, selected]
   );
 
@@ -77,10 +81,10 @@ export default function CalendarScreen() {
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate();
 
-  const hasEvent = (day: Date) =>
-    filtered.some(event =>
-      sameDay(new Date(event.starts_at), day)
-    );
+  const openDue = useMemo(
+    () => tasks.filter((task) => task.status !== 'completed' && task.due_at && (!selected || task.group_id === selected)),
+    [tasks, selected],
+  );
 
   const conflicts = useMemo(() => findConflicts([
     ...filtered.map((event) => ({
@@ -110,9 +114,7 @@ export default function CalendarScreen() {
       return filtered;
     }
 
-    return filtered.filter(event =>
-      sameDay(new Date(event.starts_at), selectedDay)
-    );
+    return filtered.filter(event => overlapsLocalDay(event.starts_at, event.ends_at, selectedDay));
   }, [filtered, selectedDay, view]);
 
   const moveDate = (direction: number) => {
@@ -232,61 +234,105 @@ export default function CalendarScreen() {
                       anchor.getMonth(),
                       day
                     );
+                    const chosen = valid && sameDay(date, selectedDay);
+                    const hasMeeting = valid && filtered.some((event) => overlapsLocalDay(event.starts_at, event.ends_at, date));
+                    const hasDeadline = valid && openDue.some((task) => task.due_at && overlapsLocalDay(task.due_at, task.due_at, date));
 
                     return (
-                      <Text
+                      <Pressable
                         key={index}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: chosen }}
+                        accessibilityLabel={valid ? date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : undefined}
+                        disabled={!valid}
                         onPress={() => {
-                          if (valid) {
-                            setSelectedDay(date);
-                            setAnchor(date);
-                          }
+                          setSelectedDay(date);
+                          setAnchor(date);
                         }}
                         style={[
                           styles.day,
-                          valid &&
-                            sameDay(date, selectedDay) &&
-                            styles.daySelected,
+                          chosen && styles.daySelected,
                           !valid && styles.dayBlank,
                         ]}
                       >
-                        {valid
-                          ? `${day}${hasEvent(date) ? ' •' : ''}`
-                          : ''}
-                      </Text>
+                        <Text style={[styles.dayText, chosen && styles.dayTextSelected]}>
+                          {valid ? day : ''}
+                        </Text>
+                        {hasMeeting || hasDeadline ? (
+                          <View style={styles.dots}>
+                            {hasMeeting ? <View style={[styles.dot, chosen && styles.dotOn]} /> : null}
+                            {hasDeadline ? <View style={[styles.dot, styles.dotDeadline]} /> : null}
+                          </View>
+                        ) : null}
+                      </Pressable>
                     );
                   })}
                 </View>
               </>
             ) : view === 'week' ? (
               <View style={styles.grid}>
-                {weekDays.map((day, index) => (
-                  <Text
-                    key={index}
-                    onPress={() => {
-                      setSelectedDay(day);
-                      setAnchor(day);
-                    }}
-                    style={[
-                      styles.weekDay,
-                      sameDay(day, selectedDay) &&
-                        styles.daySelected,
-                    ]}
-                  >
-                    {day.toLocaleDateString(undefined, {
-                      weekday: 'short',
-                    })}
-                    {'\n'}
-                    {day.getDate()}
-                    {hasEvent(day) ? ' •' : ''}
-                  </Text>
-                ))}
+                {weekDays.map((day, index) => {
+                  const chosen = sameDay(day, selectedDay);
+                  const hasMeeting = filtered.some((event) => overlapsLocalDay(event.starts_at, event.ends_at, day));
+                  const hasDeadline = openDue.some((task) => task.due_at && overlapsLocalDay(task.due_at, task.due_at, day));
+                  return (
+                    <Pressable
+                      key={index}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: chosen }}
+                      onPress={() => {
+                        setSelectedDay(day);
+                        setAnchor(day);
+                      }}
+                      style={[styles.weekDay, chosen && styles.daySelected]}
+                    >
+                      <Text style={[styles.dayText, chosen && styles.dayTextSelected]}>
+                        {day.toLocaleDateString(undefined, { weekday: 'narrow' })}
+                      </Text>
+                      <Text style={[styles.dayText, chosen && styles.dayTextSelected]}>{day.getDate()}</Text>
+                      {hasMeeting || hasDeadline ? (
+                        <View style={styles.dots}>
+                          {hasMeeting ? <View style={[styles.dot, chosen && styles.dotOn]} /> : null}
+                          {hasDeadline ? <View style={[styles.dot, styles.dotDeadline]} /> : null}
+                        </View>
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
               </View>
             ) : (
               <Text style={styles.monthHint}>
                 Upcoming events across all of your groups
               </Text>
             )}
+
+            {view !== 'agenda' ? (
+              <View style={styles.dayPreview}>
+                <Text style={styles.monthHint}>
+                  {selectedDay.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                </Text>
+                {visible.length || openDue.some((task) => task.due_at && overlapsLocalDay(task.due_at, task.due_at, selectedDay)) ? (
+                  <>
+                    {visible.map((event) => (
+                      <Text
+                        key={event.id}
+                        onPress={() => router.push(`/event/${event.id}`)}
+                        style={styles.previewItem}
+                      >
+                        {event.kind === 'meeting' ? 'Meeting' : event.kind === 'deadline' ? 'Deadline' : 'Event'} · {formatTime(event.starts_at)} · {event.title}
+                      </Text>
+                    ))}
+                    {openDue.filter((task) => task.due_at && overlapsLocalDay(task.due_at, task.due_at, selectedDay)).map((task) => (
+                      <Text key={task.id} onPress={() => router.push(`/task/${task.id}`)} style={styles.previewItem}>
+                        Due · {task.title}
+                      </Text>
+                    ))}
+                  </>
+                ) : (
+                  <Text style={styles.monthHint}>Nothing scheduled on this day.</Text>
+                )}
+              </View>
+            ) : null}
           </Card>
 
           <ScrollView
@@ -322,9 +368,9 @@ export default function CalendarScreen() {
             <Card key={`deadline-${task.id}`} style={styles.event}>
               <View style={{ flex: 1 }}>
                 <Text onPress={() => router.push(`/task/${task.id}`)} style={styles.eventTitle}>{task.title}</Text>
-                <Text style={styles.eventMeta}>Task deadline · {task.group?.name || 'Project'} · {formatDate(task.due_at)}</Text>
+                <Text style={styles.eventMeta}>Task deadline · {task.group?.name || 'Personal'} · {formatDate(task.due_at)}</Text>
               </View>
-              <Pill>deadline</Pill>
+              <Pill tone="medium">Deadline</Pill>
             </Card>
           ))}
 
@@ -394,15 +440,19 @@ export default function CalendarScreen() {
                   </Text>
 
                   <View style={{ marginTop: 8 }}>
-                    <Pill>{event.kind}</Pill>
+                    <Pill tone={event.kind === 'meeting' ? 'active' : event.kind === 'deadline' ? 'medium' : 'neutral'}>
+                      {event.kind === 'meeting' ? 'Meeting' : event.kind === 'deadline' ? 'Deadline' : event.kind}
+                    </Pill>
                   </View>
                 </View>
               </Card>
             ))
           ) : (
             <EmptyState
-              title="Your calendar is open"
-              body="Add a group event, meeting or deadline to start building your shared calendar."
+              title={view === 'agenda' ? 'Nothing coming up' : 'Nothing on this day'}
+              body={view === 'agenda'
+                ? 'Meetings and deadlines that are still ahead show up here.'
+                : 'This day shows meetings and deadlines that have not ended yet. Agenda lists everything still ahead.'}
             />
           )}
 
@@ -485,31 +535,59 @@ const styles = {
   },
   day: {
     width: '14.285%',
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    height: 36,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+  },
+  dots: {
+    flexDirection: 'row',
+    gap: 3,
+    height: 6,
+    marginTop: 2,
+  },
+  dot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#D7EBE7',
+  },
+  dotOn: {
+    backgroundColor: theme.colors.primary,
+  },
+  dotDeadline: {
+    backgroundColor: theme.colors.gold,
+  },
+  dayText: {
     color: 'white',
     fontSize: 12,
     fontWeight: '700',
-    borderRadius: 18,
-    overflow: 'hidden',
+    textAlign: 'center',
+  },
+  dayTextSelected: {
+    color: theme.colors.ink,
   },
   dayBlank: {
-    color: 'transparent',
+    opacity: 0,
   },
   daySelected: {
-    backgroundColor: theme.colors.gold,
-    color: theme.colors.ink,
+    backgroundColor: 'white',
+  },
+  dayPreview: {
+    marginTop: 8,
+    gap: 4,
+  },
+  previewItem: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: '700',
+    paddingVertical: 2,
   },
   weekDay: {
     flex: 1,
-    textAlign: 'center',
-    color: 'white',
-    fontSize: 10,
-    lineHeight: 18,
+    alignItems: 'center',
     paddingVertical: 7,
     borderRadius: 12,
-    overflow: 'hidden',
   },
   filters: {
     gap: 8,

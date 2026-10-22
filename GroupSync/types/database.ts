@@ -12,6 +12,10 @@ export interface Profile {
   skills?: string;
   interests?: string;
   timezone?: string;
+  goals?: string[];
+  custom_goal?: string;
+  planning_style?: 'steady' | 'sprint' | 'flexible';
+  onboarding_completed?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -53,6 +57,30 @@ export interface CalendarEvent {
   group?: Group;
 }
 
+export type AttendeeResponse = 'invited' | 'accepted' | 'declined';
+
+export interface Meeting {
+  id: string;
+  group_id: string;
+  event_id: string | null;
+  created_by: string;
+  title: string;
+  description: string;
+  agenda: string;
+  starts_at: string;
+  ends_at: string;
+  location: string;
+  notes: string;
+  action_items: string;
+}
+
+export interface MeetingAttendee {
+  meeting_id: string;
+  user_id: string;
+  response: AttendeeResponse;
+  profile?: Pick<Profile, 'display_name'>;
+}
+
 export interface TaskAssignment {
   user_id: string;
   profile?: Profile;
@@ -60,7 +88,7 @@ export interface TaskAssignment {
 
 export interface Task {
   id: string;
-  group_id: string;
+  group_id: string | null;
   created_by: string;
   title: string;
   description: string;
@@ -74,6 +102,7 @@ export interface Task {
   origin?: TaskOrigin;
   blocked_reason?: string;
   plan_id?: string | null;
+  milestone_id?: string | null;
   group?: Group;
   assignments?: TaskAssignment[];
 }
@@ -105,6 +134,7 @@ export interface Milestone {
   due_on: string | null;
   completed_at: string | null;
   created_by: string;
+  sort_order?: number;
 }
 
 export interface ProgressLog {

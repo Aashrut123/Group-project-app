@@ -33,10 +33,12 @@ export async function loadGroups(): Promise<Group[]> {
 }
 
 export async function loadEvents(groupId?: string): Promise<CalendarEvent[]> {
+  const since = new Date();
+  since.setDate(since.getDate() - 120);
   let query = supabase
     .from('events')
     .select('*, group:groups(id,name,color)')
-    .gte('ends_at', new Date(Date.now() - 86_400_000).toISOString())
+    .gte('ends_at', since.toISOString())
     .order('starts_at');
   if (groupId) query = query.eq('group_id', groupId);
   const { data, error } = await query;
@@ -47,7 +49,7 @@ export async function loadEvents(groupId?: string): Promise<CalendarEvent[]> {
 export async function loadTasks(groupId?: string): Promise<Task[]> {
   let query = supabase
     .from('tasks')
-    .select('*, group:groups(id,name,color), assignments:task_assignments(user_id)')
+    .select('*, group:groups(id,name,color), assignments:task_assignments(user_id, profile:profiles(display_name))')
     .order('created_at', { ascending: false });
   if (groupId) query = query.eq('group_id', groupId);
   const { data, error } = await query;

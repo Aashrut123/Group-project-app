@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import {
@@ -11,6 +11,8 @@ import {
   Field,
   Loading,
   Page,
+  ProgressBar,
+  TextButton,
   Title,
 } from '@/components/ui';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -68,22 +70,22 @@ export default function GroupsScreen() {
               Projects
             </Title>
 
-            <Text
-              style={styles.add}
-              onPress={() => router.push('/create-group')}
-            >
-              ＋ New
-            </Text>
+            <TextButton title="New" onPress={() => router.push('/create-group')} />
           </View>
 
           {error ? <ErrorText>{error}</ErrorText> : null}
 
           {groups.filter((group) => group.status !== 'archived').length ? (
-            groups.filter((group) => group.status !== 'archived').map(group => (
-              <Card
+            groups.filter((group) => group.status !== 'archived').map(group => {
+              const percent = completionPercent(tasks.filter((task) => task.group_id === group.id));
+              return (
+              <Pressable
                 key={group.id}
-                style={styles.group}
+                accessibilityRole="button"
+                onPress={() => router.push(`/group/${group.id}`)}
+                style={({ pressed }) => [pressed && styles.pressed]}
               >
+              <Card style={styles.group}>
                 <View
                   style={[
                     styles.color,
@@ -98,27 +100,19 @@ export default function GroupsScreen() {
                   <Text style={styles.name}>
                     {group.name}
                   </Text>
-
-                  <Text
-                    style={styles.desc}
-                    numberOfLines={2}
-                  >
-                    {completionPercent(tasks.filter((task) => task.group_id === group.id))}% complete
-                    {group.deadline ? ` · due ${formatDate(group.deadline)}` : ''}
-                    {group.description ? ` · ${group.description}` : ''}
-                  </Text>
+                  <ProgressBar
+                    value={percent}
+                    color={group.color || theme.colors.primary}
+                    label={`${percent}% complete${group.deadline ? ` · due ${formatDate(group.deadline)}` : ''}`}
+                  />
+                  {group.description ? (
+                    <Text style={styles.desc} numberOfLines={2}>{group.description}</Text>
+                  ) : null}
                 </View>
-
-                <Text
-                  onPress={() =>
-                    router.push(`/group/${group.id}`)
-                  }
-                  style={styles.open}
-                >
-                  ›
-                </Text>
               </Card>
-            ))
+              </Pressable>
+              );
+            })
           ) : (
             <EmptyState
               title="No groups yet"
@@ -153,9 +147,9 @@ export default function GroupsScreen() {
             ) : null}
 
             <Button
-              title={working ? 'Joining…' : 'Join group'}
+              title="Join group"
               onPress={() => void join()}
-              disabled={working}
+              busy={working}
               secondary
             />
           </Card>
@@ -170,11 +164,6 @@ const styles = {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  add: {
-    color: theme.colors.primary,
-    fontWeight: '800',
-    marginTop: 7,
-  },
   group: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -185,21 +174,19 @@ const styles = {
     height: 46,
     borderRadius: 8,
   },
+  pressed: {
+    opacity: 0.82,
+  },
   name: {
     color: theme.colors.ink,
-    fontWeight: '800',
+    fontWeight: '700',
     fontSize: 16,
   },
   desc: {
     color: theme.colors.muted,
     fontSize: 12,
     lineHeight: 17,
-    marginTop: 4,
-  },
-  open: {
-    color: theme.colors.faint,
-    fontSize: 28,
-    paddingHorizontal: 4,
+    marginTop: 8,
   },
   join: {
     marginTop: 18,

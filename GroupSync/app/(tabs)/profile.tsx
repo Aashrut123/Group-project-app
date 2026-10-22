@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Image, Alert, ScrollView, Text } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Image, Alert, Linking, ScrollView, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
@@ -13,21 +13,30 @@ import {
   Title,
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { useWorkspace } from '@/hooks/useWorkspace';
+import { goalSummary } from '@/lib/goals';
+import { phoneAlertsPreference, setPhoneAlerts, syncPhoneAlerts, type AlertPreference } from '@/lib/phoneAlerts';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 import * as ImagePicker from 'expo-image-picker';
 
 export default function ProfileScreen() {
   const { user, profile, loading, refreshProfile } = useAuth();
+  const { tasks, events } = useWorkspace();
 
   const [name, setName] = useState(profile?.display_name || '');
   const [skills, setSkills] = useState(profile?.skills || '');
   const [interests, setInterests] = useState(profile?.interests || '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [alerts, setAlerts] = useState<AlertPreference | 'denied'>('unset');
   const [selectedImage, setSelectedImage] = useState<string | undefined>(
     undefined
   );
+
+  useEffect(() => {
+    void phoneAlertsPreference().then(setAlerts);
+  }, []);
 
   if (loading) return <Loading />;
 
@@ -149,7 +158,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <Page>
-        <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
           <Title subtitle="Your account and preferences">
             Profile & settings
           </Title>
@@ -203,8 +212,54 @@ export default function ProfileScreen() {
             disabled={busy}
           />
 
+          <Card style={{ marginTop: 8 }}>
+            <Text style={styles.section}>Goals</Text>
+            <Text style={styles.about}>
+              {goalSummary(profile?.goals, profile?.custom_goal) || 'No goals saved yet. They shape milestone suggestions and the built-in planner.'}
+            </Text>
+            <Button
+              title="Edit goals"
+              onPress={() => router.push({ pathname: '/onboarding', params: { edit: '1' } })}
+              secondary
+            />
+          </Card>
+
           <Button title="Availability" onPress={() => router.push('/availability')} secondary />
           <Button title="Notices" onPress={() => router.push('/notifications')} secondary />
+
+          <Card style={{ marginTop: 16 }}>
+            <Text style={styles.section}>Phone alerts</Text>
+            <Text style={styles.about}>
+              A task alerts you one hour before it is due. A meeting alerts you 30 minutes before it starts. Expo Go asks you to allow notifications for Expo Go.
+            </Text>
+            <Button
+              title={alerts === 'on' ? 'Turn off phone alerts' : 'Turn on phone alerts'}
+              onPress={() => {
+                void (async () => {
+                  const enabling = alerts !== 'on';
+                  const result = await setPhoneAlerts(enabling);
+                  if (result === 'denied') {
+                    setAlerts('denied');
+                    return;
+                  }
+                  if (result === 'unsupported') {
+                    setError('Phone alerts work in the iPhone and Android app.');
+                    return;
+                  }
+                  setAlerts(result);
+                  if (result === 'on') syncPhoneAlerts(tasks, events, true);
+                })();
+              }}
+              secondary
+            />
+            {alerts === 'denied' ? (
+              <>
+                <Text style={styles.about}>Alerts are blocked. Allow notifications for Expo Go, then turn them on again.</Text>
+                <Button title="Open phone settings" onPress={() => void Linking.openSettings()} secondary />
+              </>
+            ) : null}
+            {alerts === 'on' ? <Text style={styles.about}>Phone alerts are on for the tasks and meetings already in GroupSync.</Text> : null}
+          </Card>
 
           <Card style={{ marginTop: 20 }}>
             <Text style={styles.section}>About GroupSync</Text>

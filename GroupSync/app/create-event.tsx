@@ -3,6 +3,7 @@ import { Alert, ScrollView, Text } from 'react-native';
 
 import { router } from 'expo-router';
 
+import { DateField } from '@/components/DateField';
 import {
   Button,
   Card,
@@ -12,7 +13,6 @@ import {
 } from '@/components/ui';
 
 import { useWorkspace } from '@/hooks/useWorkspace';
-import { dateInputValue } from '@/lib/format';
 import { theme } from '@/lib/theme';
 import { supabase } from '@/lib/supabase';
 
@@ -26,8 +26,8 @@ export default function CreateEventScreen() {
   const [groupId, setGroupId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [startsAt, setStartsAt] = useState('');
-  const [endsAt, setEndsAt] = useState('');
+  const [startsAt, setStartsAt] = useState<Date | null>(null);
+  const [endsAt, setEndsAt] = useState<Date | null>(null);
   const [location, setLocation] = useState('');
   const [kind, setKind] = useState<EventKind>('event');
   const [agenda, setAgenda] = useState('');
@@ -46,18 +46,9 @@ export default function CreateEventScreen() {
       return;
     }
 
-    const suggestedStart = new Date(Date.now() + 3600000);
-
-    const start = new Date(
-      startsAt || dateInputValue(suggestedStart)
-    );
-
-    const end = new Date(
-      endsAt ||
-        dateInputValue(
-          new Date(suggestedStart.getTime() + 3600000)
-        )
-    );
+    const suggestedStart = new Date(Date.now() + 3_600_000);
+    const start = startsAt ?? suggestedStart;
+    const end = endsAt ?? new Date(start.getTime() + 3_600_000);
 
     if (
       Number.isNaN(start.getTime()) ||
@@ -131,6 +122,7 @@ export default function CreateEventScreen() {
   return (
     <Page>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 30 }}
       >
@@ -183,19 +175,9 @@ export default function CreateEventScreen() {
           multiline
         />
 
-        <Field
-          label="Starts (local time)"
-          value={startsAt}
-          onChangeText={setStartsAt}
-          placeholder="YYYY-MM-DDTHH:mm (defaults to one hour from now)"
-        />
-
-        <Field
-          label="Ends (local time)"
-          value={endsAt}
-          onChangeText={setEndsAt}
-          placeholder="YYYY-MM-DDTHH:mm (defaults to one hour later)"
-        />
+        <DateField label="Starts" mode="datetime" value={startsAt} onChange={setStartsAt} />
+        <DateField label="Ends" mode="datetime" value={endsAt} onChange={setEndsAt} />
+        <Text style={styles.hint}>Leave these blank to schedule a one-hour block starting in an hour.</Text>
 
         {kind === 'meeting' ? (
           <Field
@@ -239,6 +221,11 @@ const styles = {
     fontWeight: '700',
     marginTop: 4,
     marginBottom: 4,
+  },
+  hint: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    marginBottom: 8,
   },
 
   selectors: {

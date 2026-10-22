@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { findConflicts, overloadedDays } from './conflicts.ts';
+import { atLocalTime, formatDay, isStillScheduled, overlapsLocalDay } from './dates.ts';
 import { buildFallbackPlan } from './fallback.ts';
 import { canPromoteMember, canRemoveMember } from './permissions.ts';
 import { acceptedChanges, proposeReschedule } from './reschedule.ts';
-import { completionPercent, nextTaskStatus } from './status.ts';
+import { completionPercent, milestoneTaskProgress, nextTaskStatus } from './status.ts';
 import type { PlannerInput, PlannerMember, RescheduleTask } from './types.ts';
 import { parseGeneratedPlan, validatePlannerInput } from './validate.ts';
 
@@ -33,6 +34,16 @@ const input = (extra: Partial<PlannerInput> = {}): PlannerInput => ({
   ...extra,
 });
 
+test('local due times stay on the chosen calendar day', () => {
+  const due = atLocalTime('2026-11-03', 17, 30);
+  assert.ok(due);
+  assert.equal(formatDay(due), '2026-11-03');
+  assert.equal(due.getHours(), 17);
+  assert.equal(due.getMinutes(), 30);
+  assert.equal(atLocalTime('2026-02-31', 10), null);
+  assert.equal(atLocalTime('2026-11-03', 24, 0), null);
+});
+
 test('task status moves through blocked before completed', () => {
   assert.equal(nextTaskStatus('todo'), 'in_progress');
   assert.equal(nextTaskStatus('in_progress'), 'blocked');
@@ -40,10 +51,17 @@ test('task status moves through blocked before completed', () => {
   assert.equal(nextTaskStatus('completed'), 'todo');
 });
 
-test('completion uses tasks and milestones', () => {
-  assert.equal(completionPercent([], []), 0);
-  assert.equal(completionPercent([{ status: 'completed' }, { status: 'todo' }], []), 50);
-  assert.equal(completionPercent([{ status: 'completed' }], [{ completed: false }]), 50);
+test('project progress counts each task once', () => {
+  assert.equal(completionPercent([]), 0);
+  assert.equal(completionPercent([{ status: 'completed' }, { status: 'todo' }]), 50);
+  assert.equal(completionPercent([{ status: 'completed' }]), 100);
+  assert.deepEqual(milestoneTaskProgress([]), { done: 0, total: 0, percent: 0 });
+  assert.equal(milestoneTaskProgress([
+    { status: 'completed' },
+    { status: 'todo' },
+    { status: 'todo' },
+    { status: 'todo' },
+  ]).percent, 25);
 });
 
 test('membership rules match the database checks', () => {
@@ -77,6 +95,17 @@ test('fallback plan avoids unavailable days and does not duplicate finished work
     }
   }
   assert.match(plan.summary, /hours|fit/i);
+});
+
+test('sprint pacing keeps a shorter buffer than flexible pacing', () => {
+  const sprint = buildFallbackPlan(input({ pace: 'sprint', existingTasks: [] }));
+  const flexible = buildFallbackPlan(input({ pace: 'flexible', existingTasks: [] }));
+  assert.match(sprint.risks.join(' '), /last 1 day /);
+  assert.match(flexible.risks.join(' '), /last 4 days /);
+  assert.match(sprint.assumptions.join(' '), /Sprint pacing/);
+  const sprintMid = sprint.tasks[Math.floor(sprint.tasks.length / 2)]?.dueDate ?? '';
+  const flexibleMid = flexible.tasks[Math.floor(flexible.tasks.length / 2)]?.dueDate ?? '';
+  assert.ok(sprintMid <= flexibleMid);
 });
 
 test('fallback plan is honest when the team has no days', () => {
@@ -182,4 +211,21 @@ test('conflicts ignore deadlines and catch unavailable overlaps', () => {
     { dueDate: '2026-11-03', estimatedMinutes: 90, status: 'todo' },
     { dueDate: '2026-11-03', estimatedMinutes: 90, status: 'completed' },
   ], 60), [{ day: '2026-11-03', minutes: 90 }]);
+});
+
+test('a meeting is no longer upcoming after it ends', () => {
+  const now = new Date('2026-10-19T18:00:00.000Z');
+  assert.equal(isStillScheduled('2026-10-19T17:00:00.000Z', now), false);
+  assert.equal(isStillScheduled('2026-10-19T19:00:00.000Z', now), true);
+});
+
+test('a meeting shows on the local day it occupies', () => {
+  const day = new Date(2026, 9, 19);
+  const start = new Date(2026, 9, 19, 16, 0, 0);
+  const end = new Date(2026, 9, 19, 17, 0, 0);
+  assert.equal(overlapsLocalDay(start.toISOString(), end.toISOString(), day), true);
+  assert.equal(overlapsLocalDay(start.toISOString(), end.toISOString(), new Date(2026, 9, 20)), false);
+  const late = new Date(2026, 9, 18, 23, 30, 0);
+  const afterMidnight = new Date(2026, 9, 19, 0, 30, 0);
+  assert.equal(overlapsLocalDay(late.toISOString(), afterMidnight.toISOString(), day), true);
 });

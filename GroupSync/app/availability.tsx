@@ -1,22 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, Text } from 'react-native';
 
+import { DateField } from '@/components/DateField';
 import { Button, Card, Chip, ErrorText, Field, Loading, Page } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { formatDay } from '@/lib/planner/dates';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 import type { AvailabilityWindow, UnavailablePeriod } from '@/types/database';
 
 const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-function minutes(value: string): number | null {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
-  if (!match) return null;
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
-  if (hour > 23 || minute > 59) return null;
-  return hour * 60 + minute;
-}
 
 function label(minute: number): string {
   const hour = Math.floor(minute / 60);
@@ -29,10 +22,18 @@ export default function AvailabilityScreen() {
   const [windows, setWindows] = useState<AvailabilityWindow[]>([]);
   const [blocks, setBlocks] = useState<UnavailablePeriod[]>([]);
   const [weekday, setWeekday] = useState(1);
-  const [start, setStart] = useState('16:00');
-  const [end, setEnd] = useState('19:00');
-  const [awayStart, setAwayStart] = useState('');
-  const [awayEnd, setAwayEnd] = useState('');
+  const [start, setStart] = useState<Date | null>(() => {
+    const date = new Date();
+    date.setHours(16, 0, 0, 0);
+    return date;
+  });
+  const [end, setEnd] = useState<Date | null>(() => {
+    const date = new Date();
+    date.setHours(19, 0, 0, 0);
+    return date;
+  });
+  const [awayStart, setAwayStart] = useState<Date | null>(null);
+  const [awayEnd, setAwayEnd] = useState<Date | null>(null);
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -58,10 +59,14 @@ export default function AvailabilityScreen() {
   }, [load]);
 
   const addWindow = async () => {
-    const startMinute = minutes(start);
-    const endMinute = minutes(end);
-    if (startMinute == null || endMinute == null || endMinute <= startMinute) {
-      setError('Use HH:mm times, with the end after the start.');
+    if (!start || !end) {
+      setError('Choose a start and end time.');
+      return;
+    }
+    const startMinute = start.getHours() * 60 + start.getMinutes();
+    const endMinute = end.getHours() * 60 + end.getMinutes();
+    if (endMinute <= startMinute) {
+      setError('The end time has to be after the start.');
       return;
     }
     setBusy(true);
@@ -77,15 +82,15 @@ export default function AvailabilityScreen() {
   };
 
   const addAway = async () => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(awayStart) || !/^\d{4}-\d{2}-\d{2}$/.test(awayEnd) || awayEnd < awayStart) {
-      setError('Enter unavailable dates as YYYY-MM-DD, with the end on or after the start.');
+    if (!awayStart || !awayEnd || formatDay(awayEnd) < formatDay(awayStart)) {
+      setError('Choose a first and last day, with the last day on or after the first.');
       return;
     }
     setBusy(true);
     setError('');
     const { error: issue } = await supabase.from('unavailable_periods').insert({
-      starts_on: awayStart,
-      ends_on: awayEnd,
+      starts_on: formatDay(awayStart),
+      ends_on: formatDay(awayEnd),
       reason: reason.trim(),
     });
     setBusy(false);
@@ -112,7 +117,7 @@ export default function AvailabilityScreen() {
 
   return (
     <Page>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 28 }}>
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 28 }}>
         <Text style={styles.lead}>The planner uses these hours and away dates. It does not sync them to another calendar.</Text>
         {error ? <ErrorText>{error}</ErrorText> : null}
         <Text style={styles.heading}>Weekly windows</Text>
@@ -121,8 +126,8 @@ export default function AvailabilityScreen() {
             <Chip key={day} label={day} active={weekday === index} onPress={() => setWeekday(index)} />
           ))}
         </ScrollView>
-        <Field label="Starts" value={start} onChangeText={setStart} placeholder="16:00" autoCapitalize="none" />
-        <Field label="Ends" value={end} onChangeText={setEnd} placeholder="19:00" autoCapitalize="none" />
+        <DateField label="Starts" mode="time" value={start} onChange={setStart} />
+        <DateField label="Ends" mode="time" value={end} onChange={setEnd} />
         <Button title={busy ? 'Saving…' : 'Add window'} onPress={() => void addWindow()} disabled={busy} />
         {windows.map((window) => (
           <Card key={window.id}>
@@ -131,8 +136,8 @@ export default function AvailabilityScreen() {
           </Card>
         ))}
         <Text style={styles.heading}>Away dates</Text>
-        <Field label="First day away" value={awayStart} onChangeText={setAwayStart} placeholder="YYYY-MM-DD" autoCapitalize="none" />
-        <Field label="Last day away" value={awayEnd} onChangeText={setAwayEnd} placeholder="YYYY-MM-DD" autoCapitalize="none" />
+        <DateField label="First day away" value={awayStart} onChange={setAwayStart} />
+        <DateField label="Last day away" value={awayEnd} onChange={setAwayEnd} />
         <Field label="Reason" value={reason} onChangeText={setReason} placeholder="Optional, such as exams or travel" />
         <Button title="Add unavailable period" onPress={() => void addAway()} disabled={busy} secondary />
         {blocks.map((block) => (

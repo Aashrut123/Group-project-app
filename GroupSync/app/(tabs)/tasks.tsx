@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import {
@@ -11,60 +11,31 @@ import {
   Loading,
   Page,
   Pill,
+  priorityTone,
+  statusTone,
+  TextButton,
   Title,
 } from '@/components/ui';
-import { useAuth } from '@/features/auth/AuthProvider';
-import { useWorkspace } from '@/hooks/useWorkspace';
-import { nextTaskStatus } from '@/lib/planner/status';
-import { formatDate } from '@/lib/format';
-import { supabase } from '@/lib/supabase';
+import { updateTaskStatus, useWorkspace } from '@/hooks/useWorkspace';
+import { assigneeLabel, formatDate } from '@/lib/format';
+import { taskStatusLabel } from '@/lib/planner/status';
 import { theme } from '@/lib/theme';
 import type { TaskStatus } from '@/types/database';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const statuses: TaskStatus[] = [
-  'todo',
-  'in_progress',
-  'blocked',
-  'completed',
-];
-
 const label: Record<TaskStatus, string> = {
-  todo: 'Not started',
-  in_progress: 'In progress',
-  blocked: 'Blocked',
-  completed: 'Completed',
+  todo: taskStatusLabel('todo'),
+  in_progress: taskStatusLabel('in_progress'),
+  blocked: taskStatusLabel('blocked'),
+  completed: taskStatusLabel('completed'),
 };
 
 export default function TasksScreen() {
-  const { user } = useAuth();
   const { tasks, loading, error, refresh } = useWorkspace();
-
-  const [filter, setFilter] = useState<'all' | TaskStatus>(
-    'all'
-  );
-  const [scope, setScope] = useState<'mine' | 'groups'>(
-    'mine'
-  );
   const [query, setQuery] = useState('');
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
-  const mine = useMemo(
-    () =>
-      tasks.filter(
-        task =>
-          task.assignments?.some(
-            assignment => assignment.user_id === user?.id
-          ) || task.created_by === user?.id
-      ),
-    [tasks, user?.id]
-  );
-
-  const visible = (
-    scope === 'mine' ? mine : tasks
-  )
-    .filter(
-      task => filter === 'all' || task.status === filter
-    )
+  const visible = tasks
     .filter((task) => {
       const haystack = `${task.title} ${task.description}`.toLowerCase();
       return haystack.includes(query.trim().toLowerCase());
@@ -77,19 +48,17 @@ export default function TasksScreen() {
     return <Loading />;
   }
 
-  const cycle = async (
-    taskId: string,
-    current: TaskStatus
-  ) => {
-    const next = nextTaskStatus(current);
-
-    const { error: issue } = await supabase
-      .from('tasks')
-      .update({ status: next })
-      .eq('id', taskId);
-    if (issue) return;
-
-    await refresh();
+  const toggleFinished = async (taskId: string, current: TaskStatus) => {
+    if (pendingId) return;
+    const next = current === 'completed' ? 'todo' : 'completed';
+    setPendingId(taskId);
+    try {
+      await updateTaskStatus(taskId, next);
+    } catch {
+      await refresh();
+    } finally {
+      setPendingId(null);
+    }
   };
 
   return (
@@ -104,54 +73,8 @@ export default function TasksScreen() {
               Tasks
             </Title>
 
-            <Text
-              style={styles.add}
-              onPress={() => router.push('/create-task')}
-            >
-              ＋ Add
-            </Text>
+            <TextButton title="Add" onPress={() => router.push('/create-task')} />
           </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filters}
-          >
-            <Text
-              onPress={() => setScope('mine')}
-              style={[
-                styles.filter,
-                scope === 'mine' && styles.active,
-              ]}
-            >
-              My tasks
-            </Text>
-
-            <Text
-              onPress={() => setScope('groups')}
-              style={[
-                styles.filter,
-                scope === 'groups' && styles.active,
-              ]}
-            >
-              All group tasks
-            </Text>
-
-            <View style={{ width: 8 }} />
-
-            {(['all', ...statuses] as const).map(value => (
-              <Text
-                key={value}
-                onPress={() => setFilter(value)}
-                style={[
-                  styles.filter,
-                  filter === value && styles.active,
-                ]}
-              >
-                {value === 'all' ? 'All statuses' : label[value]}
-              </Text>
-            ))}
-          </ScrollView>
 
           <Field label="Search" value={query} onChangeText={setQuery} placeholder="Search titles and descriptions" autoCapitalize="none" />
 
@@ -163,66 +86,40 @@ export default function TasksScreen() {
                 key={task.id}
                 style={styles.task}
               >
-                <View style={{ flex: 1 }}>
-                  <Text
-                    onPress={() =>
-                      router.push(`/task/${task.id}`)
-                    }
-                    style={styles.taskTitle}
-                  >
-                    {task.title}
-                  </Text>
-
-                  <Text
-                    onPress={() =>
-                      router.push(`/task/${task.id}`)
-                    }
-                    style={styles.meta}
-                  >
-                    {task.group?.name || 'Group'} · Due{' '}
+                <Pressable accessibilityRole="button" onPress={() => router.push(`/task/${task.id}`)} style={styles.taskBody}>
+                  <Text style={[styles.taskTitle, task.status === 'completed' && styles.taskDone]}>{task.title}</Text>
+                  <Text style={styles.meta}>
+                    {task.group?.name || 'Personal'} · {assigneeLabel(task.assignments)} · Due{' '}
                     {formatDate(task.due_at)}
                   </Text>
-
                   <View style={styles.pills}>
-                    <Pill
-                      color={
-                        task.priority === 'high'
-                          ? '#FCE9E7'
-                          : task.priority === 'medium'
-                            ? '#FFF3D9'
-                            : undefined
-                      }
-                    >
-                      {task.priority}
-                    </Pill>
-
-                    <View style={{ width: 7 }} />
-
-                    <Pill>{label[task.status]}</Pill>
+                    <Pill tone={priorityTone(task.priority)}>{task.priority}</Pill>
+                    <Pill tone={statusTone(task.status)}>{label[task.status]}</Pill>
                   </View>
-                </View>
+                </Pressable>
 
-                <Text
-                  onPress={() =>
-                    void cycle(task.id, task.status)
-                  }
-                  style={styles.check}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ busy: pendingId === task.id, checked: task.status === 'completed' }}
+                  accessibilityLabel={task.status === 'completed' ? 'Mark not finished' : 'Mark finished'}
+                  disabled={pendingId === task.id}
+                  onPress={() => void toggleFinished(task.id, task.status)}
+                  style={({ pressed }) => [styles.check, pressed && styles.checkPressed]}
                 >
-                  {task.status === 'completed' ? '✓' : '○'}
-                </Text>
+                  <View style={[styles.mark, task.status === 'completed' && styles.markOn, pendingId === task.id && styles.markBusy]}>
+                    <Text style={styles.markGlyph}>{task.status === 'completed' ? '✓' : ''}</Text>
+                  </View>
+                  <Text style={styles.checkLabel}>{pendingId === task.id ? 'Saving' : task.status === 'completed' ? 'Finished' : 'Finish'}</Text>
+                </Pressable>
               </Card>
             ))
           ) : (
             <EmptyState
-              title={
-                scope === 'mine'
-                  ? 'No tasks assigned to you yet'
-                  : 'No tasks match this view'
-              }
+              title={query.trim() ? 'No tasks match this search' : 'No tasks yet'}
               body={
-                scope === 'mine'
-                  ? 'Ask a teammate to assign you a task, or switch to all group tasks to browse the shared work.'
-                  : 'Add work to a group, assign it to yourself or a teammate, and track progress here.'
+                query.trim()
+                  ? 'Try a different word from a title or description.'
+                  : 'Add work to a project and it will show up here.'
               }
             />
           )}
@@ -242,41 +139,22 @@ const styles = {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  add: {
-    color: theme.colors.primary,
-    fontWeight: '800',
-    marginTop: 7,
-  },
-  filters: {
-    gap: 8,
-    paddingBottom: 14,
-  },
-  filter: {
-    color: theme.colors.muted,
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: theme.colors.line,
-    borderRadius: 30,
-    paddingVertical: 8,
-    paddingHorizontal: 13,
-    overflow: 'hidden',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  active: {
-    color: 'white',
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
   task: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
+  },
+  taskBody: {
+    flex: 1,
   },
   taskTitle: {
     color: theme.colors.ink,
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  taskDone: {
+    color: theme.colors.muted,
   },
   meta: {
     color: theme.colors.muted,
@@ -285,11 +163,42 @@ const styles = {
   },
   pills: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     marginTop: 10,
   },
   check: {
-    color: theme.colors.primary,
-    fontSize: 27,
+    alignItems: 'center',
     padding: 8,
+    minWidth: 64,
+  },
+  checkPressed: {
+    opacity: 0.7,
+  },
+  mark: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markOn: {
+    backgroundColor: theme.colors.primary,
+  },
+  markBusy: {
+    opacity: 0.45,
+  },
+  markGlyph: {
+    color: theme.colors.onPrimary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  checkLabel: {
+    color: theme.colors.primary,
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 4,
   },
 } as const;
