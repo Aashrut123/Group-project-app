@@ -19,28 +19,50 @@ export function AuthProvider({ children }: React.PropsWithChildren) {
   const [loading, setLoading] = useState(true);
 
   const refreshProfile = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setProfile(null); return; }
-    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+    const userId = session?.user?.id;
+    if (!userId) { setProfile(null); return; }
+    const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
     setProfile(data as Profile | null);
   };
 
   useEffect(() => {
     let alive = true;
-    supabase.auth.getSession().then(async ({ data }) => {
+    const finish = () => {
+      if (alive) setLoading(false);
+    };
+    // If Supabase does not answer, stop waiting and show the sign-in screen.
+    const timer = setTimeout(finish, 8000);
+    // Do not call another auth method inside this callback. Supabase holds a lock
+    // until it finishes, and a nested auth call never returns, so the app stays on the spinner.
+    supabase.auth.getSession().then(({ data }) => {
       if (!alive) return;
       setSession(data.session);
-      if (data.session) await refreshProfile();
-      if (alive) setLoading(false);
-    });
+      finish();
+    }).catch(() => finish());
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, next) => {
+      if (!alive) return;
       setSession(next);
-      if (next) setTimeout(() => { void refreshProfile(); }, 0);
-      else setProfile(null);
-      setLoading(false);
+      if (!next) setProfile(null);
+      finish();
     });
-    return () => { alive = false; subscription.unsubscribe(); };
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+      subscription.unsubscribe();
+    };
   }, []);
+
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+    let alive = true;
+    supabase.from('profiles').select('*').eq('id', userId).maybeSingle().then(({ data }) => {
+      if (alive) setProfile((data as Profile | null) ?? null);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [session?.user?.id]);
 
   return <AuthContext.Provider value={{ session, user: session?.user ?? null, profile, loading, refreshProfile }}>{children}</AuthContext.Provider>;
 }
