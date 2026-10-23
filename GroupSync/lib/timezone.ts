@@ -20,6 +20,9 @@ export function isTimeZone(value: string): boolean {
   }
 }
 
+/** GroupSync uses Central time unless a profile has chosen another zone. */
+export const DEFAULT_TIME_ZONE = 'America/Chicago';
+
 export function deviceTimeZone(): string {
   try {
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -27,12 +30,13 @@ export function deviceTimeZone(): string {
   } catch {
     // Intl can throw if the runtime has no timezone data.
   }
-  return 'UTC';
+  return DEFAULT_TIME_ZONE;
 }
 
 export function preferredTimeZone(saved?: string | null): string {
-  if (saved && isTimeZone(saved)) return saved;
-  return deviceTimeZone();
+  // UTC is the old database default, not a choice the person made.
+  if (saved && saved !== 'UTC' && isTimeZone(saved)) return saved;
+  return DEFAULT_TIME_ZONE;
 }
 
 export function timezoneChoices(selected?: string | null): { id: string; label: string }[] {

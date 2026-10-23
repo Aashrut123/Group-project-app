@@ -30,6 +30,7 @@ function RootNavigator() {
           headerTintColor: colors.primary,
           headerTitleStyle: { color: colors.text, fontWeight: '700' },
           headerShadowVisible: false,
+          headerBackButtonDisplayMode: 'minimal',
           animation: 'fade',
           animationDuration: 220,
           contentStyle: { backgroundColor: colors.background },

@@ -1,11 +1,13 @@
+import { DEFAULT_TIME_ZONE } from '@/lib/timezone';
+
 export function formatDate(value: string | null, options?: Intl.DateTimeFormatOptions): string {
   if (!value) return 'No due date';
   const date = new Date(value);
-  return date.toLocaleDateString(undefined, options || { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(undefined, { timeZone: DEFAULT_TIME_ZONE, month: 'short', day: 'numeric', ...options });
 }
 
 export function formatTime(value: string): string {
-  return new Date(value).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return new Date(value).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: DEFAULT_TIME_ZONE });
 }
 
 export function dateInputValue(date = new Date()): string {

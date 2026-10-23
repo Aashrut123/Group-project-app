@@ -5,7 +5,7 @@ import { DateField } from '@/components/DateField';
 import { Button, Card, Chip, ErrorText, Field, Loading, Page } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { formatDay } from '@/lib/planner/dates';
-import { preferredTimeZone, timezoneLabel } from '@/lib/timezone';
+import { DEFAULT_TIME_ZONE, preferredTimeZone, timezoneLabel } from '@/lib/timezone';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/features/theme/ThemeProvider';
 import type { AppColors } from '@/lib/theme';
@@ -23,7 +23,7 @@ export default function AvailabilityScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const { user, profile } = useAuth();
-  const timeZone = preferredTimeZone(profile?.timezone);
+  const timeZone = preferredTimeZone(profile?.timezone || DEFAULT_TIME_ZONE);
   const [windows, setWindows] = useState<AvailabilityWindow[]>([]);
   const [blocks, setBlocks] = useState<UnavailablePeriod[]>([]);
   const [weekday, setWeekday] = useState(1);
@@ -123,7 +123,7 @@ export default function AvailabilityScreen() {
   return (
     <Page>
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 28 }}>
-        <Text style={styles.lead}>These hours and away dates use {timezoneLabel(timeZone)} time. They are not copied from another calendar.</Text>
+        <Text style={styles.lead}>Weekly hours and away dates are in {timezoneLabel(timeZone)} time.</Text>
         {error ? <ErrorText>{error}</ErrorText> : null}
         <Text style={styles.heading}>Weekly windows</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.days}>

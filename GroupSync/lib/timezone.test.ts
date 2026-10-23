@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { overlapsZonedDay, unavailableBounds, zonedDateTime } from './timezone.ts';
+import { DEFAULT_TIME_ZONE, overlapsZonedDay, preferredTimeZone, unavailableBounds, zonedDateTime } from './timezone.ts';
+
+test('Central is the default when a profile has no chosen zone', () => {
+  assert.equal(DEFAULT_TIME_ZONE, 'America/Chicago');
+  assert.equal(preferredTimeZone(undefined), 'America/Chicago');
+  assert.equal(preferredTimeZone(null), 'America/Chicago');
+  assert.equal(preferredTimeZone(''), 'America/Chicago');
+  assert.equal(preferredTimeZone('UTC'), 'America/Chicago');
+  assert.equal(preferredTimeZone('America/New_York'), 'America/New_York');
+});
 
 test('an away date uses the profile timezone instead of UTC midnight', () => {
   const chicago = unavailableBounds('2026-07-15', '2026-07-15', 'America/Chicago');

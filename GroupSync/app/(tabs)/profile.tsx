@@ -1,6 +1,6 @@
 
-import React, { useEffect, useState } from 'react';
-import { Image, Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Image, Alert, Linking, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
@@ -17,7 +17,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { goalSummary } from '@/lib/goals';
-import { deviceTimeZone, preferredTimeZone, timezoneChoices, timezoneLabel } from '@/lib/timezone';
+import { preferredTimeZone, timezoneChoices, timezoneLabel } from '@/lib/timezone';
 import { phoneAlertsPreference, setPhoneAlerts, syncPhoneAlerts, type AlertPreference } from '@/lib/phoneAlerts';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/features/theme/ThemeProvider';
@@ -45,9 +45,20 @@ export default function ProfileScreen() {
   const [selectedImage, setSelectedImage] = useState<string | undefined>(
     undefined
   );
+  const photoOpen = useRef(false);
+  const photosAllowed = useRef<boolean | null>(null);
 
   useEffect(() => {
     void phoneAlertsPreference().then(setAlerts);
+    // Ask for photo access while the screen is open, so tapping the picture does not wait on it.
+    void ImagePicker.getMediaLibraryPermissionsAsync().then((current) => {
+      photosAllowed.current = current.granted;
+      if (!current.granted && current.canAskAgain) {
+        void ImagePicker.requestMediaLibraryPermissionsAsync().then((asked) => {
+          photosAllowed.current = asked.granted;
+        });
+      }
+    });
   }, []);
 
   if (loading) return <Loading />;
@@ -93,34 +104,39 @@ export default function ProfileScreen() {
   };
 
   const pickImageAsync = async () => {
-    if (!user) {
-      Alert.alert('Error', 'Please log in first.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (result.canceled) return;
-
-    const image = result.assets[0];
+    if (!user || photoOpen.current) return;
+    photoOpen.current = true;
 
     try {
+      if (photosAllowed.current === false) {
+        const asked = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        photosAllowed.current = asked.granted;
+        if (!asked.granted) {
+          Alert.alert('Photos are blocked', 'Allow photo access to choose a profile picture.');
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        legacy: Platform.OS === 'android',
+      });
+
+      if (result.canceled) return;
+
+      const image = result.assets[0];
+      if (!image) return;
+
       setBusy(true);
       setError('');
-
-      // Show the selected image while it uploads.
       setSelectedImage(image.uri);
 
       const response = await fetch(image.uri);
       const file = await response.arrayBuffer();
-
-      const extension =
-        image.mimeType === 'image/png' ? 'png' : 'jpg';
-
+      const extension = image.mimeType === 'image/png' ? 'png' : 'jpg';
       const filePath = `${user.id}/avatar.${extension}`;
 
       const { error: uploadError } = await supabase.storage
@@ -132,10 +148,7 @@ export default function ProfileScreen() {
 
       if (uploadError) throw uploadError;
 
-      const { data } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const { error: dbError } = await supabase
         .from('profiles')
         .update({ avatar_url: data.publicUrl })
@@ -143,24 +156,17 @@ export default function ProfileScreen() {
 
       if (dbError) throw dbError;
 
-      // Use the saved URL, not the temporary local image URI.
       setSelectedImage(data.publicUrl);
-
       await refreshProfile();
-
       Alert.alert('Success', 'Profile picture saved!');
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to upload picture.';
-
+      const message = err instanceof Error ? err.message : 'Failed to upload picture.';
       setError(message);
-
-      // Revert to the previously saved picture if the upload fails.
       setSelectedImage(profile?.avatar_url || undefined);
-
       Alert.alert('Upload failed', message);
     } finally {
       setBusy(false);
+      photoOpen.current = false;
     }
   };
 
@@ -181,7 +187,7 @@ export default function ProfileScreen() {
               accessibilityRole="button"
               accessibilityLabel="Choose a photo"
               disabled={busy}
-              onPress={() => void pickImageAsync()}
+              onPressIn={() => void pickImageAsync()}
             >
               {avatarUri ? (
                 <Image
@@ -226,7 +232,7 @@ export default function ProfileScreen() {
 
           <Text style={[styles.section, styles.zoneHeading]}>Timezone</Text>
           <Text style={styles.about}>
-            Away dates and the calendar use {timezoneLabel(timezone)}. This phone is {timezoneLabel(deviceTimeZone())}.
+            Away dates, the calendar, and availability use {timezoneLabel(timezone)} time. Central is the default.
           </Text>
           <View style={styles.zones}>
             {timezoneChoices(timezone).map((zone) => (
