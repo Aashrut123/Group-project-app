@@ -2,6 +2,7 @@ import { Stack, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Text, View } from 'react-native';
 
+import { AppFrame } from '@/components/AppFrame';
 import { Button } from '@/components/ui';
 import { AuthProvider } from '@/features/auth/AuthProvider';
 import { ThemeProvider, useTheme } from '@/features/theme/ThemeProvider';
@@ -57,7 +58,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <RootNavigator />
+        <AppFrame>
+          <RootNavigator />
+        </AppFrame>
       </AuthProvider>
     </ThemeProvider>
   );

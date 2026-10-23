@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
-import { useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Loading } from '@/components/ui';
@@ -20,12 +19,10 @@ const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
 
 export default function TabLayout() {
   const { user, profile, loading } = useAuth();
-  const { colors, scheme } = useTheme();
+  const { colors } = useTheme();
   const { tasks, events } = useWorkspace();
-  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const reduceMotion = usePrefersReducedMotion();
-  const desktop = width >= 960;
   usePhoneAlerts(Boolean(user), tasks, events);
 
   if (loading) return <Loading />;
@@ -38,35 +35,25 @@ export default function TabLayout() {
         headerShown: false,
         animation: reduceMotion ? 'none' : 'fade',
         transitionSpec: reduceMotion ? undefined : { animation: 'timing', config: { duration: 200 } },
-        tabBarPosition: desktop ? 'left' : 'bottom',
-        tabBarLabelPosition: desktop ? 'beside-icon' : 'below-icon',
-        tabBarActiveTintColor: desktop ? colors.accent : colors.onMint,
-        tabBarInactiveTintColor: desktop ? '#C9DDD2' : colors.textTertiary,
-        tabBarActiveBackgroundColor: desktop ? '#245445' : colors.mint,
+        tabBarPosition: 'bottom',
+        tabBarLabelPosition: 'below-icon',
+        tabBarActiveTintColor: colors.onMint,
+        tabBarInactiveTintColor: colors.textTertiary,
+        tabBarActiveBackgroundColor: colors.mint,
         tabBarInactiveBackgroundColor: 'transparent',
-        tabBarStyle: desktop
-          ? {
-              width: 232,
-              backgroundColor: scheme === 'dark' ? '#0E1C17' : '#163D32',
-              borderRightColor: 'transparent',
-              paddingTop: 28,
-              paddingHorizontal: 12,
-            }
-          : {
-              height: 62 + insets.bottom,
-              paddingTop: 8,
-              paddingBottom: Math.max(insets.bottom, 10),
-              borderTopColor: colors.border,
-              backgroundColor: colors.surface,
-            },
-        tabBarItemStyle: desktop
-          ? { borderRadius: 14, marginVertical: 3, marginHorizontal: 8, paddingHorizontal: 10, justifyContent: 'flex-start' }
-          : { borderRadius: 14, marginHorizontal: 4, marginVertical: 2 },
-        tabBarLabelStyle: { fontWeight: '700', fontSize: desktop ? 15 : 11 },
+        tabBarStyle: {
+          height: 62 + insets.bottom,
+          paddingTop: 8,
+          paddingBottom: Math.max(insets.bottom, 10),
+          borderTopColor: colors.border,
+          backgroundColor: colors.surface,
+        },
+        tabBarItemStyle: { borderRadius: 14, marginHorizontal: 4, marginVertical: 2 },
+        tabBarLabelStyle: { fontWeight: '700', fontSize: 11 },
         tabBarIcon: ({ color, focused, size }) => (
           <Ionicons
             name={focused ? icons[route.name] : `${icons[route.name]}-outline` as keyof typeof Ionicons.glyphMap}
-            size={desktop ? 22 : size}
+            size={size}
             color={color}
           />
         ),

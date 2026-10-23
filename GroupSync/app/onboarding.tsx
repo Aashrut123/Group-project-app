@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
-import { ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { Button, Card, Chip, ErrorText, Field, Page, Pill, ProgressBar, SelectCard, TextButton } from '@/components/ui';
@@ -47,8 +47,6 @@ export default function OnboardingScreen() {
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const editing = edit === '1';
   const { user, profile, refreshProfile } = useAuth();
-  const { width } = useWindowDimensions();
-  const wide = width >= 720;
   const reduceMotion = usePrefersReducedMotion();
   const [ready, setReady] = useState(editing);
   const [step, setStep] = useState(editing ? 1 : 0);
@@ -198,9 +196,9 @@ export default function OnboardingScreen() {
             <Text style={styles.body}>
               Turn an idea into a plan, see what to do next, and keep a record of what actually got done. Start alone and invite people when you want them.
             </Text>
-            <View style={[styles.features, wide && styles.featuresWide]}>
+            <View style={styles.features}>
               {FEATURES.map((feature) => (
-                <View key={feature.title} style={[styles.feature, wide && styles.featureWide]}>
+                <View key={feature.title} style={styles.feature}>
                   <Text style={styles.featureTitle}>{feature.title}</Text>
                   <Text style={styles.note}>{feature.body}</Text>
                 </View>
@@ -357,14 +355,12 @@ function createStyles(colors: AppColors) {
   choices: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 8, marginBottom: 12 },
   note: { color: colors.muted, lineHeight: 20, marginBottom: 8 },
   features: { gap: 8, marginBottom: 16 },
-  featuresWide: { flexDirection: 'row' as const, flexWrap: 'wrap' as const },
   feature: {
     borderLeftWidth: 3,
     borderLeftColor: colors.primary,
     paddingLeft: 12,
     paddingVertical: 6,
   },
-  featureWide: { width: '48%' as const },
   featureTitle: { color: colors.ink, fontSize: 15, fontWeight: '700' as const, marginBottom: 4 },
   exampleLabel: { color: colors.faint, fontSize: 12, fontWeight: '700' as const, marginBottom: 8 },
   previewKicker: { color: colors.ink, fontSize: 18, fontWeight: '700' as const, letterSpacing: -0.3 },
