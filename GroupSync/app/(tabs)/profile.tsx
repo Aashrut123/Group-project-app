@@ -13,6 +13,7 @@ import {
   Title,
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { goalSummary } from '@/lib/goals';
 import { phoneAlertsPreference, setPhoneAlerts, syncPhoneAlerts, type AlertPreference } from '@/lib/phoneAlerts';
@@ -22,7 +23,10 @@ import * as ImagePicker from 'expo-image-picker';
 
 export default function ProfileScreen() {
   const { user, profile, loading, refreshProfile } = useAuth();
-  const { tasks, events } = useWorkspace();
+  const { tasks, events, refresh } = useWorkspace();
+  const { refreshControl } = usePullRefresh(async () => {
+    await Promise.all([refreshProfile(), refresh()]);
+  });
 
   const [name, setName] = useState(profile?.display_name || '');
   const [skills, setSkills] = useState(profile?.skills || '');
@@ -158,7 +162,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <Page>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }} refreshControl={refreshControl}>
           <Title subtitle="Your account and preferences">
             Profile & settings
           </Title>

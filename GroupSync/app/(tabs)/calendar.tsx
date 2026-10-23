@@ -14,6 +14,7 @@ import {
   Title,
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { findConflicts } from '@/lib/planner/conflicts';
 import { isStillScheduled, overlapsLocalDay } from '@/lib/planner/dates';
@@ -24,6 +25,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function CalendarScreen() {
   const { user } = useAuth();
   const { groups, events, tasks, unavailable, loading, error, refresh } = useWorkspace();
+  const { refreshControl } = usePullRefresh(refresh);
 
   useFocusEffect(useCallback(() => {
     void refresh();
@@ -140,6 +142,7 @@ export default function CalendarScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 24 }}
+          refreshControl={refreshControl}
         >
           <View style={styles.header}>
             <Title subtitle="One view across every team">

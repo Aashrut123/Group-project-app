@@ -27,6 +27,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { formatDate, formatTime } from '@/lib/format';
 import { easeLayout, usePrefersReducedMotion } from '@/lib/motion';
 import { formatDay, parseDay } from '@/lib/planner/dates';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { useWorkspace, updateTaskStatus } from '@/hooks/useWorkspace';
 import { completionPercent, milestoneTaskProgress, taskStatusLabel } from '@/lib/planner/status';
 import { supabase } from '@/lib/supabase';
@@ -154,6 +155,8 @@ export default function GroupDetailScreen() {
       void supabase.removeChannel(channel);
     };
   }, [id, load]);
+
+  const { refreshControl } = usePullRefresh(load);
 
   if (loading) {
     return <Loading />;
@@ -381,6 +384,7 @@ export default function GroupDetailScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 28 }}
+        refreshControl={refreshControl}
       >
         {error ? <ErrorText>{error}</ErrorText> : null}
 
@@ -772,12 +776,6 @@ export default function GroupDetailScreen() {
             )) : <EmptyState title="No updates yet" body="Progress logs only show work someone on the team actually posted." />}
           </>
         ) : null}
-
-        <Button
-          title="Refresh project"
-          onPress={() => void load()}
-          secondary
-        />
       </ScrollView>
     </Page>
   );

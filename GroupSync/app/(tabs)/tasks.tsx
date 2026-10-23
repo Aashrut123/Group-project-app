@@ -16,6 +16,7 @@ import {
   TextButton,
   Title,
 } from '@/components/ui';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { updateTaskStatus, useWorkspace } from '@/hooks/useWorkspace';
 import { assigneeLabel, formatDate } from '@/lib/format';
 import { taskStatusLabel } from '@/lib/planner/status';
@@ -32,6 +33,7 @@ const label: Record<TaskStatus, string> = {
 
 export default function TasksScreen() {
   const { tasks, loading, error, refresh } = useWorkspace();
+  const { refreshControl } = usePullRefresh(refresh);
   const [query, setQuery] = useState('');
   const [pendingId, setPendingId] = useState<string | null>(null);
 
@@ -67,6 +69,7 @@ export default function TasksScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 24 }}
+          refreshControl={refreshControl}
         >
           <View style={styles.head}>
             <Title subtitle="Across your groups">

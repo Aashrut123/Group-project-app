@@ -15,6 +15,7 @@ import {
   TextButton,
   Title,
 } from '@/components/ui';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { completionPercent } from '@/lib/planner/status';
 import { formatDate } from '@/lib/format';
@@ -24,6 +25,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function GroupsScreen() {
   const { groups, tasks, loading, error, refresh } = useWorkspace();
+  const { refreshControl } = usePullRefresh(refresh);
 
   const [code, setCode] = useState('');
   const [working, setWorking] = useState(false);
@@ -64,6 +66,7 @@ export default function GroupsScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 24 }}
+          refreshControl={refreshControl}
         >
           <View style={styles.head}>
             <Title subtitle="Clubs, teams, and shared deadlines">

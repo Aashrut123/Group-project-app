@@ -3,6 +3,7 @@ import { ScrollView, Text } from 'react-native';
 import { router } from 'expo-router';
 
 import { Button, Card, EmptyState, Page } from '@/components/ui';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { formatDate } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
@@ -11,6 +12,7 @@ import type { AppNotification } from '@/types/database';
 
 export default function NotificationsScreen() {
   const { notifications, refresh } = useWorkspace();
+  const { refreshControl } = usePullRefresh(refresh);
   const [error, setError] = useState('');
 
   const open = async (item: AppNotification) => {
@@ -34,7 +36,7 @@ export default function NotificationsScreen() {
 
   return (
     <Page>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }} refreshControl={refreshControl}>
         <Text style={styles.lead}>This list stays inside GroupSync. Phone alerts for due tasks and upcoming meetings are turned on from Profile.</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {notifications.length ? notifications.map((item) => (

@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Card, EmptyState, ErrorText, Loading, Page, Pill, ProgressBar, Section } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { findConflicts } from '@/lib/planner/conflicts';
 import { isStillScheduled } from '@/lib/planner/dates';
@@ -15,6 +16,7 @@ import { theme } from '@/lib/theme';
 export default function HomeScreen() {
   const { profile, user } = useAuth();
   const { groups, events, tasks, logs, notifications, unavailable, loading, error, refresh } = useWorkspace();
+  const { refreshControl } = usePullRefresh(refresh);
 
   const activeGroups = groups.filter((group) => group.status !== 'archived');
   const mine = tasks.filter((task) => task.assignments?.some((assignment) => assignment.user_id === user?.id) || task.created_by === user?.id);
@@ -55,7 +57,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <Page>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }} refreshControl={refreshControl}>
           <View style={styles.greeting}>
             <View style={{ flex: 1 }}>
               <Text style={styles.date}>{today}</Text>
@@ -164,7 +166,6 @@ export default function HomeScreen() {
             </Card>
           )) : <EmptyState title="No progress logs yet" body="A short update tells the team what actually got finished." />}
 
-          <Button title="Refresh" onPress={() => void refresh()} secondary />
         </ScrollView>
       </Page>
     </SafeAreaView>
