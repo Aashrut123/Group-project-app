@@ -1,11 +1,12 @@
 
 import React, { useEffect, useState } from 'react';
-import { Image, Alert, Linking, ScrollView, Text } from 'react-native';
+import { Image, Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
   Button,
   Card,
+  Chip,
   ErrorText,
   Field,
   Loading,
@@ -16,12 +17,16 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { goalSummary } from '@/lib/goals';
+import { deviceTimeZone, preferredTimeZone, timezoneChoices, timezoneLabel } from '@/lib/timezone';
 import { phoneAlertsPreference, setPhoneAlerts, syncPhoneAlerts, type AlertPreference } from '@/lib/phoneAlerts';
 import { supabase } from '@/lib/supabase';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 import * as ImagePicker from 'expo-image-picker';
 
 export default function ProfileScreen() {
+  const { colors, preference, setPreference } = useTheme();
+  const styles = createStyles(colors);
   const { user, profile, loading, refreshProfile } = useAuth();
   const { tasks, events, refresh } = useWorkspace();
   const { refreshControl } = usePullRefresh(async () => {
@@ -31,6 +36,9 @@ export default function ProfileScreen() {
   const [name, setName] = useState(profile?.display_name || '');
   const [skills, setSkills] = useState(profile?.skills || '');
   const [interests, setInterests] = useState(profile?.interests || '');
+  const savedZone = preferredTimeZone(profile?.timezone);
+  const [timezoneChoice, setTimezoneChoice] = useState<string | null>(null);
+  const timezone = timezoneChoice ?? savedZone;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [alerts, setAlerts] = useState<AlertPreference | 'denied'>('unset');
@@ -57,6 +65,7 @@ export default function ProfileScreen() {
           display_name: name.trim(),
           skills: skills.trim(),
           interests: interests.trim(),
+          timezone,
         })
         .eq('id', user.id);
 
@@ -168,19 +177,26 @@ export default function ProfileScreen() {
           </Title>
 
           <Card style={styles.profile}>
-            {avatarUri ? (
-              <Image
-                source={{ uri: avatarUri }}
-                style={styles.avatarImage}
-                onError={() => {
-                  console.log('Failed to load profile picture:', avatarUri);
-                }}
-              />
-            ) : (
-              <Text style={styles.avatar}>
-                {name?.[0]?.toUpperCase() || 'G'}
-              </Text>
-            )}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Choose a photo"
+              disabled={busy}
+              onPress={() => void pickImageAsync()}
+            >
+              {avatarUri ? (
+                <Image
+                  source={{ uri: avatarUri }}
+                  style={styles.avatarImage}
+                  onError={() => {
+                    console.log('Failed to load profile picture:', avatarUri);
+                  }}
+                />
+              ) : (
+                <Text style={styles.avatar}>
+                  {name?.[0]?.toUpperCase() || 'G'}
+                </Text>
+              )}
+            </Pressable>
 
             <Text style={styles.email}>{user?.email}</Text>
             <Text style={styles.member}>GroupSync member</Text>
@@ -208,6 +224,16 @@ export default function ProfileScreen() {
             placeholder="Robotics, student government"
           />
 
+          <Text style={[styles.section, styles.zoneHeading]}>Timezone</Text>
+          <Text style={styles.about}>
+            Away dates and the calendar use {timezoneLabel(timezone)}. This phone is {timezoneLabel(deviceTimeZone())}.
+          </Text>
+          <View style={styles.zones}>
+            {timezoneChoices(timezone).map((zone) => (
+              <Chip key={zone.id} label={zone.label} active={timezone === zone.id} onPress={() => setTimezoneChoice(zone.id)} />
+            ))}
+          </View>
+
           {error ? <ErrorText>{error}</ErrorText> : null}
 
           <Button
@@ -226,6 +252,16 @@ export default function ProfileScreen() {
               onPress={() => router.push({ pathname: '/onboarding', params: { edit: '1' } })}
               secondary
             />
+          </Card>
+
+          <Card>
+            <Text style={styles.section}>Appearance</Text>
+            <Text style={styles.about}>GroupSync follows your phone until you choose a theme.</Text>
+            <View style={styles.zones}>
+              {(['system', 'light', 'dark'] as const).map((option) => (
+                <Chip key={option} label={option === 'system' ? 'System' : option === 'light' ? 'Light' : 'Dark'} active={preference === option} onPress={() => setPreference(option)} />
+              ))}
+            </View>
           </Card>
 
           <Button title="Availability" onPress={() => router.push('/availability')} secondary />
@@ -278,20 +314,14 @@ export default function ProfileScreen() {
             onPress={() => void logout()}
             secondary
           />
-
-          <Button
-            title={busy ? 'Uploading…' : 'Choose a photo'}
-            onPress={() => void pickImageAsync()}
-            secondary
-            disabled={busy}
-          />
         </ScrollView>
       </Page>
     </SafeAreaView>
   );
 }
 
-const styles = {
+function createStyles(colors: AppColors) {
+  return {
   profile: {
     alignItems: 'center',
     paddingVertical: 24,
@@ -307,31 +337,42 @@ const styles = {
     borderRadius: 23,
     textAlign: 'center' as const,
     textAlignVertical: 'center' as const,
-    color: theme.colors.primaryDark,
-    backgroundColor: theme.colors.mint,
+    color: colors.primaryDark,
+    backgroundColor: colors.mint,
     fontSize: 28,
     fontWeight: '900' as const,
     overflow: 'hidden' as const,
   },
   email: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontWeight: '800' as const,
     marginTop: 12,
   },
   member: {
-    color: theme.colors.muted,
+    color: colors.muted,
     fontSize: 12,
     marginTop: 4,
   },
   section: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontSize: 16,
     fontWeight: '800' as const,
   },
   about: {
-    color: theme.colors.muted,
+    color: colors.muted,
     fontSize: 13,
     lineHeight: 20,
     marginTop: 7,
   },
+  zoneHeading: {
+    marginTop: 16,
+  },
+  zones: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: 7,
+    marginTop: 10,
+  },
 } as const;
+}
+

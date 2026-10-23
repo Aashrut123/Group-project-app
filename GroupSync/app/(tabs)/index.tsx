@@ -4,17 +4,23 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Card, EmptyState, ErrorText, Loading, Page, Pill, ProgressBar, Section } from '@/components/ui';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { findConflicts } from '@/lib/planner/conflicts';
 import { isStillScheduled } from '@/lib/planner/dates';
+import { preferredTimeZone, unavailableBounds } from '@/lib/timezone';
 import { completionPercent, isOpenStatus } from '@/lib/planner/status';
 import { formatDate, formatTime } from '@/lib/format';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 
 export default function HomeScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { profile, user } = useAuth();
+  const timeZone = preferredTimeZone(profile?.timezone);
   const { groups, events, tasks, logs, notifications, unavailable, loading, error, refresh } = useWorkspace();
   const { refreshControl } = usePullRefresh(refresh);
 
@@ -34,14 +40,17 @@ export default function HomeScreen() {
       end: event.ends_at,
       kind: event.kind === 'deadline' ? 'deadline' as const : event.kind === 'meeting' ? 'meeting' as const : 'event' as const,
     })),
-    ...unavailable.filter((period) => period.user_id === user?.id).map((period) => ({
-      id: period.id,
-      title: period.reason || 'Unavailable',
-      start: new Date(`${period.starts_on}T00:00:00`).toISOString(),
-      end: new Date(new Date(`${period.ends_on}T00:00:00`).getTime() + 86_400_000).toISOString(),
-      kind: 'unavailable' as const,
-    })),
-  ]), [events, unavailable, user?.id]);
+    ...unavailable.filter((period) => period.user_id === user?.id).map((period) => {
+      const bounds = unavailableBounds(period.starts_on, period.ends_on, timeZone);
+      return {
+        id: period.id,
+        title: period.reason || 'Unavailable',
+        start: bounds.start,
+        end: bounds.end,
+        kind: 'unavailable' as const,
+      };
+    }),
+  ]), [events, unavailable, user?.id, timeZone]);
 
   if (loading) {
     return (
@@ -79,37 +88,37 @@ export default function HomeScreen() {
           {error ? <ErrorText>{error}</ErrorText> : null}
 
           {!activeGroups.length ? (
-            <Card>
-              <Text style={styles.cardTitle}>Start with one project</Text>
-              <Text style={styles.quiet}>
-                Create a project when you are ready. You can invite people later, or use GroupSync on your own.
-              </Text>
-              <Button title="Create a project" onPress={() => router.push('/create-group')} />
-            </Card>
+            <View style={styles.hero}>
+              <Text style={styles.kicker}>Start here</Text>
+              <Text style={styles.nextTitle}>One project is enough to begin</Text>
+              <Text style={styles.heroQuiet}>Invite people later, or keep the work to yourself until the team is ready.</Text>
+              <Button title="Create a project" onPress={() => router.push('/create-group')} light />
+            </View>
           ) : (
-            <Card>
+            <View style={styles.hero}>
               <Text style={styles.kicker}>Work on this next</Text>
               <Text style={styles.nextTitle}>{nextTask?.title || 'Nothing is waiting on you'}</Text>
-              <Text style={styles.quiet}>
+              <Text style={styles.heroQuiet}>
                 {nextTask
                   ? `${nextTask.group?.name || 'Personal'} · ${nextTask.due_at ? `due ${formatDate(nextTask.due_at)}` : 'no due date'}${overdue.length ? ` · ${overdue.length} overdue` : ''}`
                   : 'Add a task when you know the next piece of work.'}
               </Text>
               <View style={styles.actions}>
-                {nextTask ? <Button title="Open task" onPress={() => router.push(`/task/${nextTask.id}`)} /> : null}
+                {nextTask ? <Button title="Open task" onPress={() => router.push(`/task/${nextTask.id}`)} light /> : null}
                 <Button title="Build a plan" onPress={() => router.push({ pathname: '/plan', params: { groupId: activeGroups[0]?.id } })} secondary />
               </View>
-            </Card>
+            </View>
           )}
 
           <View style={styles.quick}>
-            {[
-              ['Task', '/create-task'],
-              ['Meeting', '/create-event'],
-              ['Log', '/progress'],
-              ['Notices', '/notifications'],
-            ].map(([label, href]) => (
-              <Pressable key={label} accessibilityRole="button" onPress={() => router.push(href as '/create-task')} style={({ pressed }) => [styles.quickItem, pressed && styles.pressed]}>
+            {([
+              ['Task', 'add-circle-outline', '/create-task'],
+              ['Meeting', 'calendar-outline', '/create-event'],
+              ['Log', 'create-outline', '/progress'],
+              ['Notices', 'notifications-outline', '/notifications'],
+            ] as const).map(([label, icon, href]) => (
+              <Pressable key={label} accessibilityRole="button" accessibilityLabel={label} onPress={() => router.push(href)} style={({ pressed }) => [styles.quickItem, pressed && styles.pressed]}>
+                <Ionicons name={icon} size={18} color={colors.primary} />
                 <Text style={styles.quickText}>{label}{label === 'Notices' && unread ? ` ${unread}` : ''}</Text>
               </Pressable>
             ))}
@@ -129,7 +138,7 @@ export default function HomeScreen() {
           {upcomingEvents.length ? upcomingEvents.map((event) => (
             <Pressable key={event.id} accessibilityRole="button" onPress={() => router.push(`/event/${event.id}`)}>
               <Card style={styles.rowCard}>
-                <View style={[styles.bar, { backgroundColor: event.group?.color || theme.colors.primary }]} />
+                <View style={[styles.bar, { backgroundColor: event.group?.color || colors.primary }]} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardTitle}>{event.title}</Text>
                   <Text style={styles.quiet}>{event.group?.name} · {formatDate(event.starts_at)} at {formatTime(event.starts_at)}</Text>
@@ -149,7 +158,7 @@ export default function HomeScreen() {
                   <Text style={styles.cardTitle}>{group.name}</Text>
                   <ProgressBar
                     value={percent}
-                    color={group.color || theme.colors.primary}
+                    color={group.color || colors.primary}
                     label={`${percent}% of tasks complete${group.deadline ? ` · due ${formatDate(group.deadline)}` : ''}`}
                   />
                 </Card>
@@ -165,30 +174,34 @@ export default function HomeScreen() {
               <Text style={styles.body}>{log.accomplishments}</Text>
             </Card>
           )) : <EmptyState title="No progress logs yet" body="A short update tells the team what actually got finished." />}
-
         </ScrollView>
       </Page>
     </SafeAreaView>
   );
 }
 
-const styles = {
+function createStyles(colors: AppColors) {
+  return {
   greeting: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, gap: 12, marginBottom: 16 },
-  date: { color: theme.colors.primary, fontSize: 12, fontWeight: '800' as const, letterSpacing: 0.4 },
-  greet: { color: theme.colors.ink, fontSize: 28, fontWeight: '800' as const, marginTop: 4 },
-  quiet: { color: theme.colors.muted, fontSize: 13, lineHeight: 18, marginTop: 4 },
-  avatar: { width: 44, height: 44, borderRadius: 14, backgroundColor: theme.colors.mint, alignItems: 'center' as const, justifyContent: 'center' as const },
+  date: { color: colors.primary, fontSize: 12, fontWeight: '800' as const, letterSpacing: 0.4 },
+  greet: { color: colors.ink, fontSize: 28, fontWeight: '800' as const, marginTop: 4 },
+  quiet: { color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 4 },
+  avatar: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.mint, alignItems: 'center' as const, justifyContent: 'center' as const },
   avatarImage: { width: 44, height: 44, borderRadius: 14 },
-  avatarText: { color: theme.colors.primaryDark, fontWeight: '800' as const, fontSize: 18 },
-  kicker: { color: theme.colors.primary, fontSize: 12, fontWeight: '800' as const, letterSpacing: 0.3 },
-  nextTitle: { color: theme.colors.ink, fontSize: 22, fontWeight: '800' as const, marginTop: 6 },
+  avatarText: { color: colors.primaryDark, fontWeight: '800' as const, fontSize: 18 },
+  kicker: { color: '#B8E5C8', fontSize: 12, fontWeight: '700' as const, letterSpacing: 0.6, textTransform: 'uppercase' as const },
+  hero: { backgroundColor: '#163D32', borderRadius: 22, padding: 18, marginBottom: 14 },
+  heroQuiet: { color: '#D7EBE3', fontSize: 14, lineHeight: 20, marginTop: 8 },
+  nextTitle: { color: '#F4FBF7', fontSize: 24, lineHeight: 30, fontWeight: '700' as const, marginTop: 8, letterSpacing: -0.4 },
   pressed: { opacity: 0.72 },
-  actions: { gap: 4 },
-  quick: { flexDirection: 'row' as const, gap: 8, marginBottom: 12 },
-  quickItem: { flex: 1, backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, paddingVertical: 12, alignItems: 'center' as const },
-  quickText: { color: theme.colors.primaryDark, fontWeight: '800' as const, fontSize: 12 },
-  cardTitle: { color: theme.colors.ink, fontWeight: '800' as const, fontSize: 15 },
+  actions: { gap: 4, marginTop: 4 },
+  quick: { flexDirection: 'row' as const, gap: 8, marginBottom: 4 },
+  quickItem: { flex: 1, backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.line, paddingVertical: 12, alignItems: 'center' as const, gap: 6 },
+  quickText: { color: colors.primaryDark, fontWeight: '800' as const, fontSize: 12 },
+  cardTitle: { color: colors.ink, fontWeight: '800' as const, fontSize: 15 },
   rowCard: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 10 },
   bar: { width: 4, height: 36, borderRadius: 4 },
-  body: { color: theme.colors.ink, marginTop: 8, lineHeight: 20 },
-};
+  body: { color: colors.ink, marginTop: 8, lineHeight: 20 },
+} as const;
+}
+

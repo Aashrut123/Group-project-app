@@ -19,11 +19,14 @@ import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { completionPercent } from '@/lib/planner/status';
 import { formatDate } from '@/lib/format';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 import { supabase } from '@/lib/supabase';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function GroupsScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { groups, tasks, loading, error, refresh } = useWorkspace();
   const { refreshControl } = usePullRefresh(refresh);
 
@@ -94,7 +97,7 @@ export default function GroupsScreen() {
                     styles.color,
                     {
                       backgroundColor:
-                        group.color || theme.colors.primary,
+                        group.color || colors.primary,
                     },
                   ]}
                 />
@@ -105,7 +108,7 @@ export default function GroupsScreen() {
                   </Text>
                   <ProgressBar
                     value={percent}
-                    color={group.color || theme.colors.primary}
+                    color={group.color || colors.primary}
                     label={`${percent}% complete${group.deadline ? ` · due ${formatDate(group.deadline)}` : ''}`}
                   />
                   {group.description ? (
@@ -162,7 +165,8 @@ export default function GroupsScreen() {
   );
 }
 
-const styles = {
+function createStyles(colors: AppColors) {
+  return {
   head: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -181,12 +185,12 @@ const styles = {
     opacity: 0.82,
   },
   name: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontWeight: '700',
     fontSize: 16,
   },
   desc: {
-    color: theme.colors.muted,
+    color: colors.muted,
     fontSize: 12,
     lineHeight: 17,
     marginTop: 8,
@@ -195,9 +199,11 @@ const styles = {
     marginTop: 18,
   },
   joinTitle: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontSize: 17,
     fontWeight: '800',
     marginBottom: 3,
   },
 } as const;
+}
+

@@ -1,13 +1,16 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshControl } from 'react-native';
 
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
 
 const MIN_VISIBLE_MS = 500;
 
 export function usePullRefresh(reload: () => Promise<unknown>) {
+  const { colors } = useTheme();
   const reloadRef = useRef(reload);
-  reloadRef.current = reload;
+  useEffect(() => {
+    reloadRef.current = reload;
+  }, [reload]);
   const [refreshing, setRefreshing] = useState(false);
   const running = useRef(false);
 
@@ -34,9 +37,9 @@ export function usePullRefresh(reload: () => Promise<unknown>) {
       onRefresh={() => {
         void onRefresh();
       }}
-      tintColor={theme.colors.primary}
-      colors={[theme.colors.primary]}
-      progressBackgroundColor={theme.colors.surface}
+      tintColor={colors.primary}
+      colors={[colors.primary]}
+      progressBackgroundColor={colors.surface}
     />
   );
 

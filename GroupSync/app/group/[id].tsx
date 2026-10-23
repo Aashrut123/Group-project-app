@@ -31,7 +31,8 @@ import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { useWorkspace, updateTaskStatus } from '@/hooks/useWorkspace';
 import { completionPercent, milestoneTaskProgress, taskStatusLabel } from '@/lib/planner/status';
 import { supabase } from '@/lib/supabase';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 import type {
   CalendarEvent,
   Group,
@@ -43,6 +44,8 @@ import type {
 } from '@/types/database';
 
 export default function GroupDetailScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const { tasks: sharedTasks } = useWorkspace();
@@ -394,7 +397,7 @@ export default function GroupDetailScreen() {
               styles.color,
               {
                 backgroundColor:
-                  group?.color || theme.colors.primary,
+                  group?.color || colors.primary,
               },
             ]}
           />
@@ -414,7 +417,7 @@ export default function GroupDetailScreen() {
         <View style={styles.progress}>
           <ProgressBar
             value={progress}
-            color={group?.color || theme.colors.primary}
+            color={group?.color || colors.primary}
             label={projectTasks.length
             ? `${progress}% of tasks finished${group?.deadline ? ` · deadline ${formatDate(group.deadline)}` : ''}${group?.outcome ? ` · ${group.outcome}` : ''}`
             : `No tasks yet, so this stays at 0%${group?.deadline ? ` · deadline ${formatDate(group.deadline)}` : ''}`}
@@ -651,7 +654,7 @@ export default function GroupDetailScreen() {
                   {milestone.completed_at ? ' · marked done' : ''}
                   {stats.total ? ` · ${stats.done} of ${stats.total} tasks finished` : ' · no tasks linked yet'}
                 </Text>
-                {stats.total ? <ProgressBar value={stats.percent} color={group?.color || theme.colors.primary} /> : null}
+                {stats.total ? <ProgressBar value={stats.percent} color={group?.color || colors.primary} /> : null}
                 {open ? (
                   <>
                     {stats.total > 0 && stats.done === stats.total && !milestone.completed_at ? (
@@ -781,7 +784,8 @@ export default function GroupDetailScreen() {
   );
 }
 
-const styles = {
+function createStyles(colors: AppColors) {
+  return {
   groupHero: {
     flexDirection: 'row',
     gap: 13,
@@ -820,12 +824,12 @@ const styles = {
     marginTop: 8,
   },
   heading: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontSize: 17,
     fontWeight: '800',
   },
   count: {
-    color: theme.colors.primary,
+    color: colors.primary,
     fontSize: 13,
   },
   member: {
@@ -843,33 +847,33 @@ const styles = {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: theme.colors.mint
+    backgroundColor: colors.mint
   },
   memberAvatarFallback: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: theme.colors.mint,
+    backgroundColor: colors.mint,
     alignItems: 'center',
     justifyContent: 'center'
   },
   memberAvatarText: {
-    color: theme.colors.primary,
+    color: colors.primary,
     fontSize: 16,
     fontWeight: '800'
   },
   personName: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontWeight: '700',
   },
   personRole: {
-    color: theme.colors.muted,
+    color: colors.muted,
     fontSize: 11,
     marginTop: 3,
     textTransform: 'capitalize',
   },
   more: {
-    color: theme.colors.muted,
+    color: colors.muted,
     fontWeight: '900',
     padding: 8,
   },
@@ -877,13 +881,13 @@ const styles = {
     marginTop: 7,
   },
   muted: {
-    color: theme.colors.muted,
+    color: colors.muted,
     fontSize: 12,
     marginTop: 5,
   },
   code: {
-    color: theme.colors.primaryDark,
-    backgroundColor: theme.colors.mint,
+    color: colors.primaryDark,
+    backgroundColor: colors.mint,
     padding: 12,
     borderRadius: 10,
     fontSize: 17,
@@ -893,15 +897,17 @@ const styles = {
     marginTop: 12,
   },
   link: {
-    color: theme.colors.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   item: {
     paddingVertical: 13,
   },
   itemTitle: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontSize: 14,
     fontWeight: '800',
   },
 } as const;
+}
+

@@ -13,7 +13,8 @@ import {
 } from '@/components/ui';
 
 import { useWorkspace } from '@/hooks/useWorkspace';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 import { supabase } from '@/lib/supabase';
 
 import type { EventKind } from '@/types/database';
@@ -21,6 +22,8 @@ import type { EventKind } from '@/types/database';
 const kinds: EventKind[] = ['event', 'meeting', 'deadline'];
 
 export default function CreateEventScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { groups, refresh } = useWorkspace();
 
   const [groupId, setGroupId] = useState('');
@@ -78,7 +81,7 @@ export default function CreateEventScreen() {
         ends_at: end.toISOString(),
         location: location.trim(),
         kind,
-        color: group?.color || theme.colors.primary,
+        color: group?.color || colors.primary,
       })
       .select('id')
       .single();
@@ -214,16 +217,17 @@ export default function CreateEventScreen() {
   );
 }
 
-const styles = {
+function createStyles(colors: AppColors) {
+  return {
   label: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontSize: 13,
     fontWeight: '700',
     marginTop: 4,
     marginBottom: 4,
   },
   hint: {
-    color: theme.colors.muted,
+    color: colors.muted,
     fontSize: 12,
     marginBottom: 8,
   },
@@ -236,20 +240,21 @@ const styles = {
   },
 
   choice: {
-    color: theme.colors.muted,
+    color: colors.muted,
     fontSize: 12,
     fontWeight: '700',
     borderRadius: 30,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: theme.colors.line,
+    borderColor: colors.line,
     paddingHorizontal: 11,
     paddingVertical: 8,
   },
 
   active: {
     color: 'white',
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
 } as const;
+}

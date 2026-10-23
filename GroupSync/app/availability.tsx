@@ -5,8 +5,10 @@ import { DateField } from '@/components/DateField';
 import { Button, Card, Chip, ErrorText, Field, Loading, Page } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { formatDay } from '@/lib/planner/dates';
+import { preferredTimeZone, timezoneLabel } from '@/lib/timezone';
 import { supabase } from '@/lib/supabase';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 import type { AvailabilityWindow, UnavailablePeriod } from '@/types/database';
 
 const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -18,7 +20,10 @@ function label(minute: number): string {
 }
 
 export default function AvailabilityScreen() {
-  const { user } = useAuth();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+  const { user, profile } = useAuth();
+  const timeZone = preferredTimeZone(profile?.timezone);
   const [windows, setWindows] = useState<AvailabilityWindow[]>([]);
   const [blocks, setBlocks] = useState<UnavailablePeriod[]>([]);
   const [weekday, setWeekday] = useState(1);
@@ -118,7 +123,7 @@ export default function AvailabilityScreen() {
   return (
     <Page>
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 28 }}>
-        <Text style={styles.lead}>The planner uses these hours and away dates. It does not sync them to another calendar.</Text>
+        <Text style={styles.lead}>These hours and away dates use {timezoneLabel(timeZone)} time. They are not copied from another calendar.</Text>
         {error ? <ErrorText>{error}</ErrorText> : null}
         <Text style={styles.heading}>Weekly windows</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.days}>
@@ -152,11 +157,14 @@ export default function AvailabilityScreen() {
   );
 }
 
-const styles = {
-  lead: { color: theme.colors.muted, lineHeight: 20, marginBottom: 12 },
-  heading: { color: theme.colors.ink, fontSize: 17, fontWeight: '800' as const, marginTop: 8, marginBottom: 8 },
+function createStyles(colors: AppColors) {
+  return {
+  lead: { color: colors.muted, lineHeight: 20, marginBottom: 12 },
+  heading: { color: colors.ink, fontSize: 17, fontWeight: '800' as const, marginTop: 8, marginBottom: 8 },
   days: { gap: 8, paddingBottom: 8 },
-  item: { color: theme.colors.ink, fontWeight: '700' as const },
-  note: { color: theme.colors.muted, marginTop: 4 },
-  remove: { color: theme.colors.red, fontWeight: '700' as const, marginTop: 8 },
-};
+  item: { color: colors.ink, fontWeight: '700' as const },
+  note: { color: colors.muted, marginTop: 4 },
+  remove: { color: colors.red, fontWeight: '700' as const, marginTop: 8 },
+} as const;
+}
+

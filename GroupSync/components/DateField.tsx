@@ -3,7 +3,8 @@ import { Platform, Pressable, Text, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 import { formatDay } from '@/lib/planner/dates';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 
 type Mode = 'date' | 'time' | 'datetime';
 
@@ -40,6 +41,8 @@ export function DateField({
   onChange: (value: Date | null) => void;
   mode?: Mode;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<'date' | 'time'>(mode === 'time' ? 'time' : 'date');
   const [fallback] = useState(() => new Date());
@@ -95,11 +98,11 @@ export function DateField({
           style: {
             width: '100%',
             boxSizing: 'border-box',
-            background: theme.colors.surface,
-            border: `1px solid ${theme.colors.line}`,
+            background: colors.surface,
+            border: `1px solid ${colors.line}`,
             borderRadius: 11,
             padding: 12,
-            color: theme.colors.ink,
+            color: colors.ink,
             fontSize: 15,
           },
         })
@@ -143,17 +146,20 @@ export function DateField({
   );
 }
 
-const styles = {
+function createStyles(colors: AppColors) {
+  return {
   wrap: { marginBottom: 12 },
-  label: { color: theme.colors.ink, fontSize: 13, fontWeight: '700' as const, marginBottom: 6 },
+  label: { color: colors.ink, fontSize: 13, fontWeight: '700' as const, marginBottom: 6 },
   button: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.line,
+    backgroundColor: colors.surface,
+    borderColor: colors.line,
     borderWidth: 1,
     borderRadius: 11,
     paddingHorizontal: 13,
     paddingVertical: 12,
   },
-  buttonText: { color: theme.colors.ink, fontSize: 15 },
-  clear: { color: theme.colors.primary, fontWeight: '700' as const, marginTop: 6 },
-};
+  buttonText: { color: colors.ink, fontSize: 15 },
+  clear: { color: colors.primary, fontWeight: '700' as const, marginTop: 6 },
+} as const;
+}
+

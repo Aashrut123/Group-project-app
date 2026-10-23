@@ -9,10 +9,13 @@ import { formatDay, parseDay, todayDay } from '@/lib/planner/dates';
 import { acceptedChanges, proposeReschedule } from '@/lib/planner/reschedule';
 import type { PlannerMember, RescheduleProposal, RescheduleTask } from '@/lib/planner/types';
 import { supabase } from '@/lib/supabase';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 import type { Membership, TaskDependency, UnavailablePeriod } from '@/types/database';
 
 export default function RescheduleScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const params = useLocalSearchParams<{ groupId?: string }>();
   const { groups, tasks, refresh } = useWorkspace();
   const [groupId, setGroupId] = useState(params.groupId ?? '');
@@ -126,7 +129,7 @@ export default function RescheduleScreen() {
         <Button title={busy ? 'Working…' : 'Preview changes'} onPress={() => void preview()} disabled={busy} />
         {proposal ? (
           <Card>
-            <Pill color={proposal.feasible ? theme.colors.mint : theme.colors.dangerBg}>{proposal.feasible ? 'Feasible' : 'Does not fit'}</Pill>
+            <Pill color={proposal.feasible ? colors.mint : colors.dangerBg}>{proposal.feasible ? 'Feasible' : 'Does not fit'}</Pill>
             <Text style={styles.body}>{proposal.explanation}</Text>
             {proposal.tradeoffs.map((item) => <Text key={item} style={styles.note}>{item}</Text>)}
             {proposal.unchangedCompleted.length ? <Text style={styles.note}>Completed and unchanged: {proposal.unchangedCompleted.join(', ')}</Text> : null}
@@ -151,10 +154,13 @@ export default function RescheduleScreen() {
   );
 }
 
-const styles = {
-  lead: { color: theme.colors.muted, lineHeight: 20, marginBottom: 12 },
+function createStyles(colors: AppColors) {
+  return {
+  lead: { color: colors.muted, lineHeight: 20, marginBottom: 12 },
   row: { gap: 8, paddingBottom: 12 },
-  body: { color: theme.colors.ink, marginTop: 8, lineHeight: 20 },
-  note: { color: theme.colors.muted, marginTop: 6, lineHeight: 18, fontSize: 13 },
-  item: { color: theme.colors.ink, fontWeight: '800' as const },
-};
+  body: { color: colors.ink, marginTop: 8, lineHeight: 20 },
+  note: { color: colors.muted, marginTop: 6, lineHeight: 18, fontSize: 13 },
+  item: { color: colors.ink, fontWeight: '800' as const },
+} as const;
+}
+

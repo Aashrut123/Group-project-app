@@ -18,7 +18,8 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { updateTaskStatus } from '@/hooks/useWorkspace';
 import { formatDate, personName } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 
 import type {
   Comment,
@@ -29,6 +30,8 @@ import type {
 } from '@/types/database';
 
 export default function TaskDetailScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
 
@@ -461,7 +464,8 @@ export default function TaskDetailScreen() {
   );
 }
 
-const styles = {
+function createStyles(colors: AppColors) {
+  return {
   head: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -470,31 +474,31 @@ const styles = {
   },
 
   group: {
-    color: theme.colors.muted,
+    color: colors.muted,
     fontSize: 12,
     marginBottom: 8,
   },
 
   delete: {
-    color: theme.colors.red,
+    color: colors.red,
     fontWeight: '800',
     padding: 8,
   },
 
   taskTitle: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontSize: 18,
     fontWeight: '800',
   },
 
   body: {
-    color: theme.colors.muted,
+    color: colors.muted,
     lineHeight: 20,
     marginTop: 7,
   },
 
   heading: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontSize: 17,
     fontWeight: '800',
     marginTop: 20,
@@ -512,7 +516,7 @@ const styles = {
   },
 
   choice: {
-    color: theme.colors.muted,
+    color: colors.muted,
     backgroundColor: 'white',
     borderRadius: 30,
     paddingVertical: 8,
@@ -524,7 +528,7 @@ const styles = {
 
   active: {
     color: 'white',
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
   },
 
   checkRow: {
@@ -532,18 +536,19 @@ const styles = {
   },
 
   requirement: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontWeight: '600',
   },
 
   done: {
-    color: theme.colors.faint,
+    color: colors.faint,
     textDecorationLine: 'line-through',
   },
 
   commentBy: {
-    color: theme.colors.primary,
+    color: colors.primary,
     fontSize: 11,
     fontWeight: '800',
   },
 } as const;
+}

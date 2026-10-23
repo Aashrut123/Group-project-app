@@ -3,7 +3,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { DateField } from '@/components/DateField';
-import { Button, Card, Chip, ErrorText, Field, Page, Pill, Section } from '@/components/ui';
+import { AiBanner, Button, Card, Chip, ErrorText, Field, Page, Pill, Section } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { saveReviewedPlan } from '@/features/plans/savePlan';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -11,10 +11,14 @@ import { generatePlan } from '@/lib/planner/generate';
 import type { GeneratedPlan, PlannerMember } from '@/lib/planner/types';
 import { formatDay, parseDay, todayDay } from '@/lib/planner/dates';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
+import { type } from '@/lib/theme';
 import type { Membership, UnavailablePeriod } from '@/types/database';
 
 export default function PlanScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const params = useLocalSearchParams<{ groupId?: string }>();
   const { profile } = useAuth();
   const { groups, tasks, refresh } = useWorkspace();
@@ -152,9 +156,7 @@ export default function PlanScreen() {
   return (
     <Page>
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
-        <Text style={styles.lead}>
-          Describe the project. You will review every task before anything is saved.
-        </Text>
+        <AiBanner title="Planner" body="Describe the project. You review every task before anything is saved." />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
           {groups.filter((group) => group.status !== 'archived').map((group) => (
             <Chip
@@ -241,17 +243,20 @@ export default function PlanScreen() {
   );
 }
 
-const styles = {
-  lead: { color: theme.colors.muted, fontSize: theme.type.body, lineHeight: 22, marginBottom: 12 },
+function createStyles(colors: AppColors) {
+  return {
+  lead: { color: colors.muted, fontSize: type.body, lineHeight: 22, marginBottom: 12 },
   row: { gap: 8, paddingBottom: 12 },
-  summary: { color: theme.colors.ink, fontWeight: '700' as const, marginTop: 8, lineHeight: 22, fontSize: theme.type.body },
-  note: { color: theme.colors.muted, fontSize: theme.type.caption, lineHeight: 18, marginTop: 6 },
-  risk: { color: theme.colors.warning, fontSize: theme.type.caption, lineHeight: 18, marginTop: 6 },
+  summary: { color: colors.ink, fontWeight: '700' as const, marginTop: 8, lineHeight: 22, fontSize: type.body },
+  note: { color: colors.muted, fontSize: type.caption, lineHeight: 18, marginTop: 6 },
+  risk: { color: colors.warning, fontSize: type.caption, lineHeight: 18, marginTop: 6 },
   pillGap: { marginTop: 10 },
-  taskTitle: { color: theme.colors.ink, fontWeight: '700' as const, fontSize: theme.type.body },
-  sourceNote: { color: theme.colors.muted, fontSize: theme.type.caption, lineHeight: 18, marginTop: 8 },
-  aiCard: { borderColor: theme.colors.blue },
-  builtinCard: { borderColor: theme.colors.primary },
-  keep: { borderLeftWidth: 3, borderLeftColor: theme.colors.primary },
+  taskTitle: { color: colors.ink, fontWeight: '700' as const, fontSize: type.body },
+  sourceNote: { color: colors.muted, fontSize: type.caption, lineHeight: 18, marginTop: 8 },
+  aiCard: { borderColor: colors.blue },
+  builtinCard: { borderColor: colors.primary },
+  keep: { borderLeftWidth: 3, borderLeftColor: colors.primary },
   skip: { opacity: 0.72 },
-};
+} as const;
+}
+

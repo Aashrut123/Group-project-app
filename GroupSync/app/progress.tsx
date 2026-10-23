@@ -6,9 +6,12 @@ import { Button, Chip, ErrorText, Field, Page } from '@/components/ui';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { todayDay } from '@/lib/planner/dates';
 import { supabase } from '@/lib/supabase';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 
 export default function ProgressScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const params = useLocalSearchParams<{ groupId?: string }>();
   const { groups, refresh } = useWorkspace();
   const [groupId, setGroupId] = useState(params.groupId ?? groups[0]?.id ?? '');
@@ -64,7 +67,10 @@ export default function ProgressScreen() {
   );
 }
 
-const styles = {
-  lead: { color: theme.colors.muted, lineHeight: 20, marginBottom: 12 },
+function createStyles(colors: AppColors) {
+  return {
+  lead: { color: colors.muted, lineHeight: 20, marginBottom: 12 },
   row: { gap: 8, paddingBottom: 12 },
-};
+} as const;
+}
+

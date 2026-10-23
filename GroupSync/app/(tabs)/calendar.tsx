@@ -17,13 +17,18 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { findConflicts } from '@/lib/planner/conflicts';
-import { isStillScheduled, overlapsLocalDay } from '@/lib/planner/dates';
+import { isStillScheduled } from '@/lib/planner/dates';
+import { overlapsZonedDay, preferredTimeZone, unavailableBounds } from '@/lib/timezone';
 import { formatDate, formatTime } from '@/lib/format';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function CalendarScreen() {
-  const { user } = useAuth();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+  const { user, profile } = useAuth();
+  const timeZone = preferredTimeZone(profile?.timezone);
   const { groups, events, tasks, unavailable, loading, error, refresh } = useWorkspace();
   const { refreshControl } = usePullRefresh(refresh);
 
@@ -96,28 +101,31 @@ export default function CalendarScreen() {
       end: event.ends_at,
       kind: event.kind === 'deadline' ? 'deadline' as const : event.kind === 'meeting' ? 'meeting' as const : 'event' as const,
     })),
-    ...unavailable.filter((period) => period.user_id === user?.id).map((period) => ({
-      id: period.id,
-      title: period.reason || 'Unavailable',
-      start: new Date(`${period.starts_on}T00:00:00`).toISOString(),
-      end: new Date(new Date(`${period.ends_on}T00:00:00`).getTime() + 86_400_000).toISOString(),
-      kind: 'unavailable' as const,
-    })),
-  ]), [filtered, unavailable, user?.id]);
+    ...unavailable.filter((period) => period.user_id === user?.id).map((period) => {
+      const bounds = unavailableBounds(period.starts_on, period.ends_on, timeZone);
+      return {
+        id: period.id,
+        title: period.reason || 'Unavailable',
+        start: bounds.start,
+        end: bounds.end,
+        kind: 'unavailable' as const,
+      };
+    }),
+  ]), [filtered, unavailable, user?.id, timeZone]);
 
   const deadlines = useMemo(() => {
     const open = tasks.filter((task) => task.status !== 'completed' && task.due_at && (!selected || task.group_id === selected));
     if (view === 'agenda') return open;
-    return open.filter((task) => task.due_at && sameDay(new Date(task.due_at), selectedDay));
-  }, [tasks, selected, selectedDay, view]);
+    return open.filter((task) => task.due_at && overlapsZonedDay(task.due_at, task.due_at, selectedDay, timeZone));
+  }, [tasks, selected, selectedDay, view, timeZone]);
 
   const visible = useMemo(() => {
     if (view === 'agenda') {
       return filtered;
     }
 
-    return filtered.filter(event => overlapsLocalDay(event.starts_at, event.ends_at, selectedDay));
-  }, [filtered, selectedDay, view]);
+    return filtered.filter(event => overlapsZonedDay(event.starts_at, event.ends_at, selectedDay, timeZone));
+  }, [filtered, selectedDay, view, timeZone]);
 
   const moveDate = (direction: number) => {
     const next = new Date(anchor);
@@ -238,8 +246,8 @@ export default function CalendarScreen() {
                       day
                     );
                     const chosen = valid && sameDay(date, selectedDay);
-                    const hasMeeting = valid && filtered.some((event) => overlapsLocalDay(event.starts_at, event.ends_at, date));
-                    const hasDeadline = valid && openDue.some((task) => task.due_at && overlapsLocalDay(task.due_at, task.due_at, date));
+                    const hasMeeting = valid && filtered.some((event) => overlapsZonedDay(event.starts_at, event.ends_at, date, timeZone));
+                    const hasDeadline = valid && openDue.some((task) => task.due_at && overlapsZonedDay(task.due_at, task.due_at, date, timeZone));
 
                     return (
                       <Pressable
@@ -276,8 +284,8 @@ export default function CalendarScreen() {
               <View style={styles.grid}>
                 {weekDays.map((day, index) => {
                   const chosen = sameDay(day, selectedDay);
-                  const hasMeeting = filtered.some((event) => overlapsLocalDay(event.starts_at, event.ends_at, day));
-                  const hasDeadline = openDue.some((task) => task.due_at && overlapsLocalDay(task.due_at, task.due_at, day));
+                  const hasMeeting = filtered.some((event) => overlapsZonedDay(event.starts_at, event.ends_at, day, timeZone));
+                  const hasDeadline = openDue.some((task) => task.due_at && overlapsZonedDay(task.due_at, task.due_at, day, timeZone));
                   return (
                     <Pressable
                       key={index}
@@ -314,7 +322,7 @@ export default function CalendarScreen() {
                 <Text style={styles.monthHint}>
                   {selectedDay.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                 </Text>
-                {visible.length || openDue.some((task) => task.due_at && overlapsLocalDay(task.due_at, task.due_at, selectedDay)) ? (
+                {visible.length || openDue.some((task) => task.due_at && overlapsZonedDay(task.due_at, task.due_at, selectedDay, timeZone)) ? (
                   <>
                     {visible.map((event) => (
                       <Text
@@ -325,7 +333,7 @@ export default function CalendarScreen() {
                         {event.kind === 'meeting' ? 'Meeting' : event.kind === 'deadline' ? 'Deadline' : 'Event'} · {formatTime(event.starts_at)} · {event.title}
                       </Text>
                     ))}
-                    {openDue.filter((task) => task.due_at && overlapsLocalDay(task.due_at, task.due_at, selectedDay)).map((task) => (
+                    {openDue.filter((task) => task.due_at && overlapsZonedDay(task.due_at, task.due_at, selectedDay, timeZone)).map((task) => (
                       <Text key={task.id} onPress={() => router.push(`/task/${task.id}`)} style={styles.previewItem}>
                         Due · {task.title}
                       </Text>
@@ -415,7 +423,7 @@ export default function CalendarScreen() {
                     {
                       backgroundColor:
                         event.group?.color ||
-                        theme.colors.primary,
+                        colors.primary,
                     },
                   ]}
                 />
@@ -469,19 +477,20 @@ export default function CalendarScreen() {
   );
 }
 
-const styles = {
+function createStyles(colors: AppColors) {
+  return {
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   add: {
-    color: theme.colors.primary,
+    color: colors.primary,
     fontWeight: '800',
     marginTop: 7,
   },
   month: {
-    backgroundColor: theme.colors.primaryDark,
-    borderColor: theme.colors.primaryDark,
+    backgroundColor: colors.primaryDark,
+    borderColor: colors.primaryDark,
   },
   monthTop: {
     flexDirection: 'row',
@@ -522,7 +531,7 @@ const styles = {
   },
   viewActive: {
     backgroundColor: 'white',
-    color: theme.colors.primaryDark,
+    color: colors.primaryDark,
   },
   grid: {
     flexDirection: 'row',
@@ -556,10 +565,10 @@ const styles = {
     backgroundColor: '#D7EBE7',
   },
   dotOn: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
   },
   dotDeadline: {
-    backgroundColor: theme.colors.gold,
+    backgroundColor: colors.gold,
   },
   dayText: {
     color: 'white',
@@ -568,7 +577,7 @@ const styles = {
     textAlign: 'center',
   },
   dayTextSelected: {
-    color: theme.colors.ink,
+    color: colors.ink,
   },
   dayBlank: {
     opacity: 0,
@@ -598,24 +607,24 @@ const styles = {
     paddingBottom: 17,
   },
   filter: {
-    color: theme.colors.muted,
+    color: colors.muted,
     borderRadius: 30,
     paddingVertical: 8,
     paddingHorizontal: 13,
     overflow: 'hidden',
     backgroundColor: 'white',
     borderWidth: 1,
-    borderColor: theme.colors.line,
+    borderColor: colors.line,
     fontSize: 12,
     fontWeight: '700',
   },
   filterActive: {
     color: 'white',
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   dayLabel: {
-    color: theme.colors.faint,
+    color: colors.faint,
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1,
@@ -630,12 +639,12 @@ const styles = {
     width: 67,
   },
   time: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontWeight: '800',
     fontSize: 13,
   },
   date: {
-    color: theme.colors.muted,
+    color: colors.muted,
     fontSize: 10,
     marginTop: 4,
   },
@@ -645,13 +654,15 @@ const styles = {
     borderRadius: 4,
   },
   eventTitle: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontWeight: '800',
     fontSize: 15,
   },
   eventMeta: {
-    color: theme.colors.muted,
+    color: colors.muted,
     fontSize: 12,
     marginTop: 4,
   },
 } as const;
+}
+

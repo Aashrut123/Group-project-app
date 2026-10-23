@@ -28,9 +28,12 @@ import {
   supabase,
 } from '@/lib/supabase';
 
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 
 export default function AuthScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { user } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -209,10 +212,11 @@ export default function AuthScreen() {
   );
 }
 
-const styles = {
+function createStyles(colors: AppColors) {
+  return {
   safe: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: colors.background,
   },
   content: {
     flexGrow: 1,
@@ -234,19 +238,19 @@ const styles = {
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   markText: {
-    color: theme.colors.onPrimary,
+    color: colors.onPrimary,
     fontSize: 20,
     fontWeight: '900',
   },
 
   brandName: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontSize: 19,
     fontWeight: '800',
   },
@@ -263,9 +267,10 @@ const styles = {
   },
 
   foot: {
-    color: theme.colors.faint,
+    color: colors.faint,
     fontSize: 12,
     textAlign: 'center',
     marginTop: 28,
   },
 } as const;
+}

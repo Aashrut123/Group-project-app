@@ -7,10 +7,13 @@ import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { formatDate } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 import type { AppNotification } from '@/types/database';
 
 export default function NotificationsScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { notifications, refresh } = useWorkspace();
   const { refreshControl } = usePullRefresh(refresh);
   const [error, setError] = useState('');
@@ -54,11 +57,14 @@ export default function NotificationsScreen() {
   );
 }
 
-const styles = {
-  lead: { color: theme.colors.muted, lineHeight: 20, marginBottom: 12 },
-  title: { color: theme.colors.ink, fontWeight: '700' as const, fontSize: 15 },
+function createStyles(colors: AppColors) {
+  return {
+  lead: { color: colors.muted, lineHeight: 20, marginBottom: 12 },
+  title: { color: colors.ink, fontWeight: '700' as const, fontSize: 15 },
   unread: { fontWeight: '800' as const },
-  body: { color: theme.colors.muted, marginTop: 4, lineHeight: 18 },
-  meta: { color: theme.colors.faint, marginTop: 6, fontSize: 12 },
-  error: { color: theme.colors.red, marginBottom: 8 },
-};
+  body: { color: colors.muted, marginTop: 4, lineHeight: 18 },
+  meta: { color: colors.faint, marginTop: 6, fontSize: 12 },
+  error: { color: colors.red, marginBottom: 8 },
+} as const;
+}
+

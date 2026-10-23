@@ -13,9 +13,12 @@ import {
 } from '@/components/ui';
 
 import { supabase } from '@/lib/supabase';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 
 export default function AuthCallbackScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const url = useURL();
 
   const [ready, setReady] = useState(false);
@@ -158,21 +161,23 @@ export default function AuthCallbackScreen() {
   );
 }
 
-const styles = {
+function createStyles(colors: AppColors) {
+  return {
   content: {
     paddingTop: 28,
   },
 
   title: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontSize: 26,
     fontWeight: '800',
   },
 
   body: {
-    color: theme.colors.muted,
+    color: colors.muted,
     marginTop: 7,
     marginBottom: 22,
     lineHeight: 20,
   },
 } as const;
+}

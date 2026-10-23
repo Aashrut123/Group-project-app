@@ -7,7 +7,8 @@ import { Button, Card, Chip, ErrorText, Field, Loading, Page, Pill } from '@/com
 import { useAuth } from '@/features/auth/AuthProvider';
 import { formatDate, formatTime } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 import type { AttendeeResponse, CalendarEvent, EventKind, Meeting, MeetingAttendee } from '@/types/database';
 
 const kinds: EventKind[] = ['event', 'meeting', 'deadline'];
@@ -28,6 +29,8 @@ function asProfile(profile: { display_name: string } | { display_name: string }[
 }
 
 export default function EventDetailScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const [event, setEvent] = useState<CalendarEvent | null>(null);
@@ -344,15 +347,18 @@ export default function EventDetailScreen() {
   );
 }
 
-const styles = {
+function createStyles(colors: AppColors) {
+  return {
   head: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, marginBottom: 12 },
-  meta: { color: theme.colors.muted, fontSize: 12, marginBottom: 8 },
-  delete: { color: theme.colors.red, fontWeight: '800' as const, padding: 8 },
-  title: { color: theme.colors.ink, fontSize: 18, fontWeight: '800' as const },
-  body: { color: theme.colors.muted, lineHeight: 20, marginTop: 6 },
-  heading: { color: theme.colors.ink, fontSize: 17, fontWeight: '800' as const, marginTop: 18, marginBottom: 8 },
-  subhead: { color: theme.colors.muted, fontWeight: '700' as const, marginTop: 8, marginBottom: 8 },
+  meta: { color: colors.muted, fontSize: 12, marginBottom: 8 },
+  delete: { color: colors.red, fontWeight: '800' as const, padding: 8 },
+  title: { color: colors.ink, fontSize: 18, fontWeight: '800' as const },
+  body: { color: colors.muted, lineHeight: 20, marginTop: 6 },
+  heading: { color: colors.ink, fontSize: 17, fontWeight: '800' as const, marginTop: 18, marginBottom: 8 },
+  subhead: { color: colors.muted, fontWeight: '700' as const, marginTop: 8, marginBottom: 8 },
   row: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 8 },
-  person: { color: theme.colors.ink, fontWeight: '700' as const, marginBottom: 8 },
-  remove: { color: theme.colors.red, fontWeight: '700' as const, marginTop: 8 },
-};
+  person: { color: colors.ink, fontWeight: '700' as const, marginBottom: 8 },
+  remove: { color: colors.red, fontWeight: '700' as const, marginTop: 8 },
+} as const;
+}
+

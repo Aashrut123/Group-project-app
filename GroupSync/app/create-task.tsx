@@ -7,6 +7,7 @@ import { DateField } from '@/components/DateField';
 import {
   Button,
   Card,
+  Chip,
   ErrorText,
   Field,
   Page,
@@ -15,21 +16,27 @@ import {
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { personName } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 
 import type {
   Group,
   Membership,
+  Milestone,
   TaskPriority,
 } from '@/types/database';
 
 const priorities: TaskPriority[] = ['low', 'medium', 'high'];
 
 export default function CreateTaskScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { groups, refresh } = useWorkspace();
 
   const [groupId, setGroupId] = useState('');
   const [members, setMembers] = useState<Membership[]>([]);
+  const [milestones, setMilestones] = useState<Pick<Milestone, 'id' | 'title'>[]>([]);
+  const [milestoneId, setMilestoneId] = useState('');
   const [assignees, setAssignees] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -52,6 +59,27 @@ export default function CreateTaskScreen() {
       .then(({ data }) => {
         if (active) setMembers((data || []) as Membership[]);
       });
+    supabase
+      .from('milestones')
+      .select('id,title')
+      .eq('group_id', groupId)
+      .order('sort_order')
+      .order('title')
+      .then(({ data, error: issue }) => {
+        if (!active) return;
+        if (issue) {
+          supabase
+            .from('milestones')
+            .select('id,title')
+            .eq('group_id', groupId)
+            .order('title')
+            .then((fallback) => {
+              if (active) setMilestones((fallback.data || []) as Pick<Milestone, 'id' | 'title'>[]);
+            });
+          return;
+        }
+        setMilestones((data || []) as Pick<Milestone, 'id' | 'title'>[]);
+      });
     return () => {
       active = false;
     };
@@ -61,7 +89,11 @@ export default function CreateTaskScreen() {
     const selected = nextId && groupId !== nextId ? nextId : '';
     setGroupId(selected);
     setAssignees([]);
-    if (!selected) setMembers([]);
+    setMilestoneId('');
+    if (!selected) {
+      setMembers([]);
+      setMilestones([]);
+    }
   };
 
   const create = async () => {
@@ -88,6 +120,7 @@ export default function CreateTaskScreen() {
         due_at: due?.toISOString() || null,
         estimated_minutes: estimatedMinutes,
         priority,
+        milestone_id: groupId && milestoneId ? milestoneId : null,
       })
       .select('id')
       .single();
@@ -95,7 +128,7 @@ export default function CreateTaskScreen() {
     if (issue || !task) {
       setBusy(false);
       setError(
-        issue && /group_id|not-null|null value|row-level security/i.test(issue.message)
+        issue && /milestone_id|schema cache|column|group_id|not-null|null value|row-level security/i.test(issue.message)
           ? 'Run the latest SQL migration in Supabase, then try again.'
           : issue?.message || 'Could not create task.',
       );
@@ -199,6 +232,28 @@ export default function CreateTaskScreen() {
           keyboardType="number-pad"
         />
 
+        {groupId ? (
+          <>
+            <Text style={styles.label}>Milestone</Text>
+            <Text style={styles.hint}>Optional. The task stays if this milestone is removed later.</Text>
+            {milestones.length ? (
+              <Card style={styles.choices}>
+                <Chip label="None" active={!milestoneId} onPress={() => setMilestoneId('')} />
+                {milestones.map((milestone) => (
+                  <Chip
+                    key={milestone.id}
+                    label={milestone.title}
+                    active={milestoneId === milestone.id}
+                    onPress={() => setMilestoneId(milestone.id)}
+                  />
+                ))}
+              </Card>
+            ) : (
+              <Text style={styles.hint}>This project has no milestones yet. Add one from the project timeline, then attach the task.</Text>
+            )}
+          </>
+        ) : null}
+
         <Text style={styles.label}>Priority</Text>
 
         <Card style={styles.choices}>
@@ -266,9 +321,10 @@ export default function CreateTaskScreen() {
   );
 }
 
-const styles = {
+function createStyles(colors: AppColors) {
+  return {
   label: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontSize: 13,
     fontWeight: '700',
     marginTop: 4,
@@ -276,7 +332,7 @@ const styles = {
   },
 
   hint: {
-    color: theme.colors.muted,
+    color: colors.muted,
     fontSize: 12,
     lineHeight: 18,
     marginBottom: 8,
@@ -290,20 +346,21 @@ const styles = {
   },
 
   choice: {
-    color: theme.colors.muted,
+    color: colors.muted,
     fontSize: 12,
     fontWeight: '700',
     borderRadius: 30,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: theme.colors.line,
+    borderColor: colors.line,
     paddingHorizontal: 11,
     paddingVertical: 8,
   },
 
   active: {
     color: 'white',
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
 } as const;
+}

@@ -8,7 +8,8 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { GOAL_PRESETS, PLANNING_STYLES, goalSummary, type PlanningStyle } from '@/lib/goals';
 import { easeLayout, usePrefersReducedMotion } from '@/lib/motion';
 import { supabase } from '@/lib/supabase';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 
 type StartPath = 'start' | 'join' | 'explore';
 
@@ -41,6 +42,8 @@ function storageKey(userId: string) {
 }
 
 export default function OnboardingScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { edit } = useLocalSearchParams<{ edit?: string }>();
   const editing = edit === '1';
   const { user, profile, refreshProfile } = useAuth();
@@ -341,33 +344,36 @@ export default function OnboardingScreen() {
   );
 }
 
-const styles = {
+function createStyles(colors: AppColors) {
+  return {
   scroll: { paddingBottom: 36 },
   progress: { flexDirection: 'row' as const, gap: 6, marginBottom: 10 },
-  bar: { flex: 1, height: 4, borderRadius: 4, backgroundColor: theme.colors.line },
-  barOn: { backgroundColor: theme.colors.primary },
-  step: { color: theme.colors.faint, fontSize: 12, fontWeight: '700' as const, marginBottom: 12 },
-  title: { color: theme.colors.ink, fontSize: 28, fontWeight: '800' as const, letterSpacing: -0.4, marginBottom: 8 },
-  body: { color: theme.colors.muted, fontSize: 15, lineHeight: 22, marginBottom: 14 },
-  section: { color: theme.colors.ink, fontSize: 16, fontWeight: '800' as const, marginBottom: 6 },
+  bar: { flex: 1, height: 4, borderRadius: 4, backgroundColor: colors.line },
+  barOn: { backgroundColor: colors.primary },
+  step: { color: colors.faint, fontSize: 12, fontWeight: '700' as const, marginBottom: 12 },
+  title: { color: colors.ink, fontSize: 28, fontWeight: '800' as const, letterSpacing: -0.4, marginBottom: 8 },
+  body: { color: colors.muted, fontSize: 15, lineHeight: 22, marginBottom: 14 },
+  section: { color: colors.ink, fontSize: 16, fontWeight: '800' as const, marginBottom: 6 },
   choices: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 8, marginBottom: 12 },
-  note: { color: theme.colors.muted, lineHeight: 20, marginBottom: 8 },
+  note: { color: colors.muted, lineHeight: 20, marginBottom: 8 },
   features: { gap: 8, marginBottom: 16 },
   featuresWide: { flexDirection: 'row' as const, flexWrap: 'wrap' as const },
   feature: {
     borderLeftWidth: 3,
-    borderLeftColor: theme.colors.primary,
+    borderLeftColor: colors.primary,
     paddingLeft: 12,
     paddingVertical: 6,
   },
   featureWide: { width: '48%' as const },
-  featureTitle: { color: theme.colors.ink, fontSize: 15, fontWeight: '700' as const, marginBottom: 4 },
-  exampleLabel: { color: theme.colors.faint, fontSize: 12, fontWeight: '700' as const, marginBottom: 8 },
-  previewKicker: { color: theme.colors.ink, fontSize: 18, fontWeight: '700' as const, letterSpacing: -0.3 },
+  featureTitle: { color: colors.ink, fontSize: 15, fontWeight: '700' as const, marginBottom: 4 },
+  exampleLabel: { color: colors.faint, fontSize: 12, fontWeight: '700' as const, marginBottom: 8 },
+  previewKicker: { color: colors.ink, fontSize: 18, fontWeight: '700' as const, letterSpacing: -0.3 },
   previewTaskRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, marginTop: 10 },
-  previewDone: { color: theme.colors.primary, fontWeight: '700' as const, width: 16 },
-  previewDoneText: { color: theme.colors.faint, textDecorationLine: 'line-through' as const, flex: 1 },
-  previewOpen: { color: theme.colors.primary, fontWeight: '700' as const, width: 16 },
-  previewTask: { color: theme.colors.ink, flex: 1 },
+  previewDone: { color: colors.primary, fontWeight: '700' as const, width: 16 },
+  previewDoneText: { color: colors.faint, textDecorationLine: 'line-through' as const, flex: 1 },
+  previewOpen: { color: colors.primary, fontWeight: '700' as const, width: 16 },
+  previewTask: { color: colors.ink, flex: 1 },
   previewPill: { marginTop: 12 },
-};
+} as const;
+}
+

@@ -16,10 +16,11 @@ import { PLANNING_STYLES, suggestedMilestones } from '@/lib/goals';
 import { formatDay } from '@/lib/planner/dates';
 
 import { useWorkspace } from '@/hooks/useWorkspace';
-import { theme } from '@/lib/theme';
+import { useTheme } from '@/features/theme/ThemeProvider';
+import type { AppColors } from '@/lib/theme';
 import { supabase } from '@/lib/supabase';
 
-const colors = [
+const swatches = [
   '#2B7168',
   '#5578B8',
   '#C66A54',
@@ -32,6 +33,8 @@ function firstParam(value?: string | string[]) {
 }
 
 export default function CreateGroupScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const params = useLocalSearchParams<{ fresh?: string; name?: string; outcome?: string }>();
   const fresh = params.fresh;
   const { profile } = useAuth();
@@ -45,7 +48,7 @@ export default function CreateGroupScreen() {
   const [description, setDescription] = useState('');
   const [outcome, setOutcome] = useState(firstParam(params.outcome));
   const [deadline, setDeadline] = useState<Date | null>(null);
-  const [color, setColor] = useState(colors[0]);
+  const [color, setColor] = useState(swatches[0]);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -193,7 +196,7 @@ export default function CreateGroupScreen() {
         <Text style={styles.label}>Group color</Text>
 
         <Text style={styles.colors}>
-          {colors.map(value => (
+          {swatches.map(value => (
             <Text
               key={value}
               onPress={() => setColor(value)}
@@ -220,15 +223,16 @@ export default function CreateGroupScreen() {
   );
 }
 
-const styles = {
+function createStyles(colors: AppColors) {
+  return {
   label: {
-    color: theme.colors.ink,
+    color: colors.ink,
     fontSize: 13,
     fontWeight: '700' as const,
     marginTop: 8,
   },
   hint: {
-    color: theme.colors.muted,
+    color: colors.muted,
     fontSize: 13,
     lineHeight: 19,
     marginTop: 8,
@@ -244,4 +248,5 @@ const styles = {
     marginTop: 10,
     marginBottom: 15,
   },
-};
+} as const;
+}
