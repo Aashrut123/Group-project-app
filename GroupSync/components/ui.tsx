@@ -8,8 +8,10 @@ import {
   Text,
   TextInput,
   View,
+  type StyleProp,
   type TextInputProps,
   type ViewProps,
+  type ViewStyle,
 } from 'react-native';
 
 import { useTheme } from '@/features/theme/ThemeProvider';
@@ -40,7 +42,7 @@ export function Title({ children, subtitle }: { children: React.ReactNode; subti
 export function Section({ children }: { children: React.ReactNode }) {
   const { colors } = useTheme();
   return (
-    <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 22, marginBottom: 10 }}>
+    <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', letterSpacing: -0.2, marginTop: 22, marginBottom: 8 }}>
       {children}
     </Text>
   );
@@ -72,6 +74,9 @@ export function Button({
   light,
   disabled,
   busy,
+  inline,
+  tone = 'default',
+  style,
 }: {
   title: string;
   onPress: () => void;
@@ -79,12 +84,24 @@ export function Button({
   light?: boolean;
   disabled?: boolean;
   busy?: boolean;
+  inline?: boolean;
+  tone?: 'default' | 'forest';
+  style?: StyleProp<ViewStyle>;
 }) {
   const { colors, radius } = useTheme();
   const blocked = Boolean(disabled || busy);
-  const background = secondary ? colors.mint : light ? colors.elevated : colors.primary;
-  const pressedBackground = secondary ? colors.accent : light ? colors.mutedSurface : colors.primaryPressed;
-  const labelColor = secondary || light ? colors.onMint : colors.primaryForeground;
+  const onForest = tone === 'forest';
+  const background = onForest
+    ? secondary ? 'transparent' : colors.accent
+    : secondary ? colors.mint : light ? colors.elevated : colors.primary;
+  const pressedBackground = onForest
+    ? secondary ? 'rgba(184,229,200,0.16)' : '#A4D9B8'
+    : secondary ? colors.accent : light ? colors.mutedSurface : colors.primaryPressed;
+  const labelColor = onForest
+    ? secondary ? colors.accent : colors.onAccent
+    : secondary || light ? colors.onMint : colors.primaryForeground;
+  const borderWidth = onForest && secondary ? 1 : light ? 1 : 0;
+  const borderColor = onForest && secondary ? colors.accent : colors.border;
   return (
     <Pressable
       accessibilityRole="button"
@@ -102,14 +119,58 @@ export function Button({
           alignItems: 'center',
           justifyContent: 'center',
           marginTop: 8,
-          borderWidth: light ? 1 : 0,
-          borderColor: colors.border,
+          borderWidth,
+          borderColor,
         },
+        inline && { alignSelf: 'flex-start', marginTop: 0, minHeight: 40, paddingHorizontal: 14 },
         blocked && { opacity: 0.5 },
+        style,
       ]}
     >
       {busy ? <ActivityIndicator color={labelColor} /> : <Text style={{ color: labelColor, fontWeight: '700', fontSize: 15 }}>{title}</Text>}
     </Pressable>
+  );
+}
+
+export function Segmented({
+  options,
+  value,
+  onChange,
+  onDark,
+}: {
+  options: { id: string; label: string }[];
+  value: string;
+  onChange: (id: string) => void;
+  onDark?: boolean;
+}) {
+  const { colors, radius } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', backgroundColor: onDark ? 'rgba(255,255,255,0.1)' : colors.mutedSurface, borderRadius: radius.sm, padding: 3, marginBottom: 14 }}>
+      {options.map((option) => {
+        const selected = option.id === value;
+        return (
+          <Pressable
+            key={option.id}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
+            onPress={() => onChange(option.id)}
+            style={({ pressed }) => [{
+              flex: 1,
+              minHeight: 36,
+              borderRadius: 10,
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingHorizontal: 6,
+              backgroundColor: selected ? (onDark ? colors.accent : colors.surface) : pressed ? (onDark ? 'rgba(255,255,255,0.08)' : colors.border) : 'transparent',
+            }]}
+          >
+            <Text style={{ color: selected ? (onDark ? colors.onAccent : colors.text) : (onDark ? colors.onForestMuted : colors.textSecondary), fontSize: 13, fontWeight: '700' }}>
+              {option.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
@@ -194,13 +255,20 @@ export function Field({ label, onFocus, onBlur, style, ...props }: TextInputProp
   );
 }
 
-export function EmptyState({ title, body }: { title: string; body: string }) {
+export function EmptyState({ title, body, compact }: { title: string; body: string; compact?: boolean }) {
   const { colors, radius } = useTheme();
+  if (compact) {
+    return (
+      <View style={{ paddingVertical: 4, marginBottom: 8 }}>
+        <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}>{title}</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18, marginTop: 2 }}>{body}</Text>
+      </View>
+    );
+  }
   return (
-    <View style={{ alignItems: 'center', paddingVertical: 28, paddingHorizontal: 12, marginTop: 8, backgroundColor: colors.mutedSurface, borderRadius: radius.md }}>
-      <Ionicons name="leaf-outline" size={22} color={colors.primary} />
-      <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', marginTop: 10, textAlign: 'center' }}>{title}</Text>
-      <Text style={{ color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginTop: 6, maxWidth: 280 }}>{body}</Text>
+    <View style={{ alignItems: 'flex-start', paddingVertical: 16, paddingHorizontal: 14, marginTop: 8, backgroundColor: colors.mutedSurface, borderRadius: radius.md }}>
+      <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>{title}</Text>
+      <Text style={{ color: colors.textSecondary, lineHeight: 20, marginTop: 4 }}>{body}</Text>
     </View>
   );
 }

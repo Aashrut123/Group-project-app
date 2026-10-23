@@ -6,11 +6,13 @@ import { router, useFocusEffect } from 'expo-router';
 import {
   Button,
   Card,
+  Chip,
   EmptyState,
   ErrorText,
   Loading,
   Page,
   Pill,
+  Segmented,
   Title,
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -152,24 +154,13 @@ export default function CalendarScreen() {
           contentContainerStyle={{ paddingBottom: 24 }}
           refreshControl={refreshControl}
         >
-          <View style={styles.header}>
-            <Title subtitle="One view across every team">
-              Calendar
-            </Title>
-
-            <Text
-              style={styles.add}
-              onPress={() => router.push('/create-event')}
-            >
-              ＋ Add
-            </Text>
-          </View>
+          <Title subtitle="One view across every team">Calendar</Title>
 
           {error ? <ErrorText>{error}</ErrorText> : null}
 
           {conflicts.length ? (
             <Card>
-              <Text style={styles.dayLabel}>CONFLICTS</Text>
+              <Text style={styles.conflictTitle}>Conflicts</Text>
               {conflicts.slice(0, 3).map((conflict) => (
                 <Text key={`${conflict.a}-${conflict.b}`} style={styles.eventMeta}>
                   {conflict.a} overlaps {conflict.b}. {conflict.reason}
@@ -180,12 +171,9 @@ export default function CalendarScreen() {
 
           <Card style={styles.month}>
             <View style={styles.monthTop}>
-              <Text
-                onPress={() => moveDate(-1)}
-                style={styles.nav}
-              >
-                ‹
-              </Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Previous" onPress={() => moveDate(-1)} hitSlop={8} style={styles.navHit}>
+                <Text style={styles.nav}>‹</Text>
+              </Pressable>
 
               <Text style={styles.monthLabel}>
                 {(view === 'week' ? selectedDay : anchor)
@@ -195,30 +183,17 @@ export default function CalendarScreen() {
                   })}
               </Text>
 
-              <Text
-                onPress={() => moveDate(1)}
-                style={styles.nav}
-              >
-                ›
-              </Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Next" onPress={() => moveDate(1)} hitSlop={8} style={styles.navHit}>
+                <Text style={styles.nav}>›</Text>
+              </Pressable>
             </View>
 
-            <View style={styles.viewSwitch}>
-              {(['month', 'week', 'agenda'] as const).map(
-                value => (
-                  <Text
-                    key={value}
-                    onPress={() => setView(value)}
-                    style={[
-                      styles.viewOption,
-                      view === value && styles.viewActive,
-                    ]}
-                  >
-                    {value[0].toUpperCase() + value.slice(1)}
-                  </Text>
-                )
-              )}
-            </View>
+            <Segmented
+              onDark
+              options={[{ id: 'month', label: 'Month' }, { id: 'week', label: 'Week' }, { id: 'agenda', label: 'Agenda' }]}
+              value={view}
+              onChange={(id) => setView(id as 'month' | 'week' | 'agenda')}
+            />
 
             {view === 'month' ? (
               <>
@@ -246,6 +221,7 @@ export default function CalendarScreen() {
                       day
                     );
                     const chosen = valid && sameDay(date, selectedDay);
+                    const isToday = valid && sameDay(date, new Date());
                     const hasMeeting = valid && filtered.some((event) => overlapsZonedDay(event.starts_at, event.ends_at, date, timeZone));
                     const hasDeadline = valid && openDue.some((task) => task.due_at && overlapsZonedDay(task.due_at, task.due_at, date, timeZone));
 
@@ -262,6 +238,7 @@ export default function CalendarScreen() {
                         }}
                         style={[
                           styles.day,
+                          isToday && !chosen && styles.dayToday,
                           chosen && styles.daySelected,
                           !valid && styles.dayBlank,
                         ]}
@@ -269,21 +246,20 @@ export default function CalendarScreen() {
                         <Text style={[styles.dayText, chosen && styles.dayTextSelected]}>
                           {valid ? day : ''}
                         </Text>
-                        {hasMeeting || hasDeadline ? (
-                          <View style={styles.dots}>
-                            {hasMeeting ? <View style={[styles.dot, chosen && styles.dotOn]} /> : null}
-                            {hasDeadline ? <View style={[styles.dot, styles.dotDeadline]} /> : null}
-                          </View>
-                        ) : null}
+                        <View style={styles.dots}>
+                          {hasMeeting ? <View style={[styles.dot, chosen && styles.dotOn]} /> : null}
+                          {hasDeadline ? <View style={[styles.dot, styles.dotDeadline]} /> : null}
+                        </View>
                       </Pressable>
                     );
                   })}
                 </View>
               </>
             ) : view === 'week' ? (
-              <View style={styles.grid}>
+              <View style={styles.weekRow}>
                 {weekDays.map((day, index) => {
                   const chosen = sameDay(day, selectedDay);
+                  const isToday = sameDay(day, new Date());
                   const hasMeeting = filtered.some((event) => overlapsZonedDay(event.starts_at, event.ends_at, day, timeZone));
                   const hasDeadline = openDue.some((task) => task.due_at && overlapsZonedDay(task.due_at, task.due_at, day, timeZone));
                   return (
@@ -295,55 +271,23 @@ export default function CalendarScreen() {
                         setSelectedDay(day);
                         setAnchor(day);
                       }}
-                      style={[styles.weekDay, chosen && styles.daySelected]}
+                      style={[styles.weekDay, isToday && !chosen && styles.dayToday, chosen && styles.daySelected]}
                     >
                       <Text style={[styles.dayText, chosen && styles.dayTextSelected]}>
                         {day.toLocaleDateString(undefined, { weekday: 'narrow' })}
                       </Text>
                       <Text style={[styles.dayText, chosen && styles.dayTextSelected]}>{day.getDate()}</Text>
-                      {hasMeeting || hasDeadline ? (
-                        <View style={styles.dots}>
-                          {hasMeeting ? <View style={[styles.dot, chosen && styles.dotOn]} /> : null}
-                          {hasDeadline ? <View style={[styles.dot, styles.dotDeadline]} /> : null}
-                        </View>
-                      ) : null}
+                      <View style={styles.dots}>
+                        {hasMeeting ? <View style={[styles.dot, chosen && styles.dotOn]} /> : null}
+                        {hasDeadline ? <View style={[styles.dot, styles.dotDeadline]} /> : null}
+                      </View>
                     </Pressable>
                   );
                 })}
               </View>
             ) : (
-              <Text style={styles.monthHint}>
-                Upcoming events across all of your groups
-              </Text>
+              <Text style={styles.monthHint}>Everything still ahead, across your projects.</Text>
             )}
-
-            {view !== 'agenda' ? (
-              <View style={styles.dayPreview}>
-                <Text style={styles.monthHint}>
-                  {selectedDay.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-                </Text>
-                {visible.length || openDue.some((task) => task.due_at && overlapsZonedDay(task.due_at, task.due_at, selectedDay, timeZone)) ? (
-                  <>
-                    {visible.map((event) => (
-                      <Text
-                        key={event.id}
-                        onPress={() => router.push(`/event/${event.id}`)}
-                        style={styles.previewItem}
-                      >
-                        {event.kind === 'meeting' ? 'Meeting' : event.kind === 'deadline' ? 'Deadline' : 'Event'} · {formatTime(event.starts_at)} · {event.title}
-                      </Text>
-                    ))}
-                    {openDue.filter((task) => task.due_at && overlapsZonedDay(task.due_at, task.due_at, selectedDay, timeZone)).map((task) => (
-                      <Text key={task.id} onPress={() => router.push(`/task/${task.id}`)} style={styles.previewItem}>
-                        Due · {task.title}
-                      </Text>
-                    ))}
-                  </>
-                ) : (
-                  <Text style={styles.monthHint}>Nothing scheduled on this day.</Text>
-                )}
-              </View>
-            ) : null}
           </Card>
 
           <ScrollView
@@ -351,121 +295,65 @@ export default function CalendarScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.filters}
           >
-            <Text
-              onPress={() => setSelected(null)}
-              style={[
-                styles.filter,
-                selected === null && styles.filterActive,
-              ]}
-            >
-              All groups
-            </Text>
-
+            <Chip label="All groups" active={selected === null} onPress={() => setSelected(null)} />
             {groups.map(group => (
-              <Text
-                key={group.id}
-                onPress={() => setSelected(group.id)}
-                style={[
-                  styles.filter,
-                  selected === group.id && styles.filterActive,
-                ]}
-              >
-                {group.name}
-              </Text>
+              <Chip key={group.id} label={group.name} active={selected === group.id} onPress={() => setSelected(group.id)} />
             ))}
           </ScrollView>
 
-          {deadlines.map((task) => (
-            <Card key={`deadline-${task.id}`} style={styles.event}>
-              <View style={{ flex: 1 }}>
-                <Text onPress={() => router.push(`/task/${task.id}`)} style={styles.eventTitle}>{task.title}</Text>
-                <Text style={styles.eventMeta}>Task deadline · {task.group?.name || 'Personal'} · {formatDate(task.due_at)}</Text>
-              </View>
-              <Pill tone="medium">Deadline</Pill>
-            </Card>
-          ))}
-
           <Text style={styles.dayLabel}>
             {view === 'agenda'
-              ? 'UPCOMING'
-              : selectedDay
-                  .toLocaleDateString(undefined, {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                  })
-                  .toUpperCase()}
+              ? 'Upcoming'
+              : selectedDay.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
           </Text>
 
-          {visible.length ? (
-            visible.map(event => (
-              <Card
-                key={event.id}
-                style={styles.event}
-              >
-                <View style={styles.eventTime}>
-                  <Text style={styles.time}>
-                    {formatTime(event.starts_at)}
-                  </Text>
+          {deadlines.map((task) => (
+            <Pressable key={`deadline-${task.id}`} accessibilityRole="button" accessibilityLabel={task.title} onPress={() => router.push(`/task/${task.id}`)} style={({ pressed }) => [styles.event, pressed && styles.pressed]}>
+              <View style={styles.eventTime}>
+                <Text style={styles.time}>Due</Text>
+                <Text style={styles.date}>{formatDate(task.due_at, { month: 'short', day: 'numeric' })}</Text>
+              </View>
+              <View style={[styles.eventDot, { backgroundColor: colors.gold }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.eventTitle} numberOfLines={2}>{task.title}</Text>
+                <Text style={styles.eventMeta}>{task.group?.name || 'Personal'}</Text>
+              </View>
+              <Pill tone="medium">Deadline</Pill>
+            </Pressable>
+          ))}
 
-                  <Text style={styles.date}>
-                    {formatDate(event.starts_at, {
-                      weekday: 'short',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </Text>
-                </View>
+          {visible.map(event => (
+            <Pressable
+              key={event.id}
+              accessibilityRole="button"
+              accessibilityLabel={event.title}
+              onPress={() => router.push(`/event/${event.id}`)}
+              style={({ pressed }) => [styles.event, pressed && styles.pressed]}
+            >
+              <View style={styles.eventTime}>
+                <Text style={styles.time}>{formatTime(event.starts_at)}</Text>
+                <Text style={styles.date}>{formatDate(event.starts_at, { month: 'short', day: 'numeric' })}</Text>
+              </View>
+              <View style={[styles.eventDot, { backgroundColor: event.group?.color || colors.primary }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.eventTitle} numberOfLines={2}>{event.title}</Text>
+                <Text style={styles.eventMeta} numberOfLines={1}>{event.group?.name || 'Project'}{event.location ? ` · ${event.location}` : ''}</Text>
+              </View>
+              <Pill tone={event.kind === 'meeting' ? 'active' : event.kind === 'deadline' ? 'medium' : 'neutral'}>
+                {event.kind === 'meeting' ? 'Meeting' : event.kind === 'deadline' ? 'Deadline' : 'Event'}
+              </Pill>
+            </Pressable>
+          ))}
 
-                <View
-                  style={[
-                    styles.eventLine,
-                    {
-                      backgroundColor:
-                        event.group?.color ||
-                        colors.primary,
-                    },
-                  ]}
-                />
-
-                <View style={{ flex: 1 }}>
-                  <Text
-                    onPress={() =>
-                      router.push(`/event/${event.id}`)
-                    }
-                    style={styles.eventTitle}
-                  >
-                    {event.title}
-                  </Text>
-
-                  <Text
-                    onPress={() =>
-                      router.push(`/event/${event.id}`)
-                    }
-                    style={styles.eventMeta}
-                  >
-                    {event.group?.name || 'Group'}
-                    {event.location
-                      ? ` · ${event.location}`
-                      : ''}
-                  </Text>
-
-                  <View style={{ marginTop: 8 }}>
-                    <Pill tone={event.kind === 'meeting' ? 'active' : event.kind === 'deadline' ? 'medium' : 'neutral'}>
-                      {event.kind === 'meeting' ? 'Meeting' : event.kind === 'deadline' ? 'Deadline' : event.kind}
-                    </Pill>
-                  </View>
-                </View>
-              </Card>
-            ))
-          ) : (
+          {!visible.length && !deadlines.length ? (
             <EmptyState
+              compact
               title={view === 'agenda' ? 'Nothing coming up' : 'Nothing on this day'}
               body={view === 'agenda'
                 ? 'Meetings and deadlines that are still ahead show up here.'
-                : 'This day shows meetings and deadlines that have not ended yet. Agenda lists everything still ahead.'}
+                : 'Pick another day, or switch to Agenda for everything still ahead.'}
             />
-          )}
+          ) : null}
 
           <Button
             title="Add calendar item"
@@ -479,190 +367,37 @@ export default function CalendarScreen() {
 
 function createStyles(colors: AppColors) {
   return {
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  add: {
-    color: colors.primary,
-    fontWeight: '800',
-    marginTop: 7,
-  },
-  month: {
-    backgroundColor: colors.primaryDark,
-    borderColor: colors.primaryDark,
-  },
-  monthTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  nav: {
-    color: 'white',
-    fontSize: 27,
-    fontWeight: '600',
-    paddingHorizontal: 8,
-  },
-  monthLabel: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  monthHint: {
-    color: '#CDE3DE',
-    fontSize: 13,
-    marginTop: 4,
-  },
-  viewSwitch: {
-    flexDirection: 'row',
-    gap: 7,
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  viewOption: {
-    color: '#D5E9E5',
-    fontSize: 11,
-    fontWeight: '800',
-    backgroundColor: '#397B72',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  viewActive: {
-    backgroundColor: 'white',
-    color: colors.primaryDark,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  weekday: {
-    color: '#BCE1D7',
-    width: '14.285%',
-    textAlign: 'center',
-    paddingVertical: 4,
-    fontWeight: '800',
-    fontSize: 11,
-  },
-  day: {
-    width: '14.285%',
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-  },
-  dots: {
-    flexDirection: 'row',
-    gap: 3,
-    height: 6,
-    marginTop: 2,
-  },
-  dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#D7EBE7',
-  },
-  dotOn: {
-    backgroundColor: colors.primary,
-  },
-  dotDeadline: {
-    backgroundColor: colors.gold,
-  },
-  dayText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  dayTextSelected: {
-    color: colors.ink,
-  },
-  dayBlank: {
-    opacity: 0,
-  },
-  daySelected: {
-    backgroundColor: 'white',
-  },
-  dayPreview: {
-    marginTop: 8,
-    gap: 4,
-  },
-  previewItem: {
-    color: 'white',
-    fontSize: 13,
-    fontWeight: '700',
-    paddingVertical: 2,
-  },
-  weekDay: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 7,
-    borderRadius: 12,
-  },
-  filters: {
-    gap: 8,
-    paddingVertical: 8,
-    paddingBottom: 17,
-  },
-  filter: {
-    color: colors.muted,
-    borderRadius: 30,
-    paddingVertical: 8,
-    paddingHorizontal: 13,
-    overflow: 'hidden',
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: colors.line,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  filterActive: {
-    color: 'white',
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  dayLabel: {
-    color: colors.faint,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-    marginBottom: 9,
-  },
-  event: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-  },
-  eventTime: {
-    width: 67,
-  },
-  time: {
-    color: colors.ink,
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  date: {
-    color: colors.muted,
-    fontSize: 10,
-    marginTop: 4,
-  },
-  eventLine: {
-    width: 3,
-    height: 50,
-    borderRadius: 4,
-  },
-  eventTitle: {
-    color: colors.ink,
-    fontWeight: '800',
-    fontSize: 15,
-  },
-  eventMeta: {
-    color: colors.muted,
-    fontSize: 12,
-    marginTop: 4,
-  },
-} as const;
+    month: { backgroundColor: colors.forestFill, borderColor: colors.forestFill, paddingBottom: 12 },
+    monthTop: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, alignItems: 'center' as const, marginBottom: 12 },
+    navHit: { width: 36, height: 36, alignItems: 'center' as const, justifyContent: 'center' as const },
+    nav: { color: colors.onForest, fontSize: 26, fontWeight: '500' as const, lineHeight: 28 },
+    monthLabel: { color: colors.onForest, fontSize: 18, fontWeight: '700' as const, letterSpacing: -0.3 },
+    monthHint: { color: colors.onForestMuted, fontSize: 13, lineHeight: 18, marginTop: 4 },
+    grid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const },
+    weekday: { color: colors.onForestMuted, width: '14.285%' as const, textAlign: 'center' as const, paddingVertical: 4, fontWeight: '700' as const, fontSize: 11 },
+    day: { width: '14.285%' as const, height: 42, alignItems: 'center' as const, justifyContent: 'center' as const, borderRadius: 12 },
+    dots: { flexDirection: 'row' as const, gap: 3, height: 6, marginTop: 2 },
+    dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.onForest },
+    dotOn: { backgroundColor: colors.onAccent },
+    dotDeadline: { backgroundColor: colors.gold },
+    dayText: { color: colors.onForest, fontSize: 13, fontWeight: '600' as const, textAlign: 'center' as const },
+    dayTextSelected: { color: colors.onAccent },
+    dayBlank: { opacity: 0 },
+    dayToday: { borderWidth: 1, borderColor: colors.accent },
+    daySelected: { backgroundColor: colors.accent },
+    weekRow: { flexDirection: 'row' as const },
+    weekDay: { flex: 1, alignItems: 'center' as const, paddingVertical: 8, borderRadius: 12 },
+    filters: { gap: 8, paddingVertical: 12 },
+    conflictTitle: { color: colors.text, fontSize: 15, fontWeight: '700' as const, marginBottom: 4 },
+    dayLabel: { color: colors.text, fontSize: 16, fontWeight: '700' as const, letterSpacing: -0.2, marginBottom: 6 },
+    event: { flexDirection: 'row' as const, gap: 10, alignItems: 'center' as const, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border },
+    pressed: { opacity: 0.7 },
+    eventTime: { width: 52 },
+    time: { color: colors.text, fontWeight: '700' as const, fontSize: 13 },
+    date: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
+    eventDot: { width: 8, height: 8, borderRadius: 4 },
+    eventTitle: { color: colors.text, fontWeight: '700' as const, fontSize: 15, lineHeight: 20 },
+    eventMeta: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
+  } as const;
 }
 

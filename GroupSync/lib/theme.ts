@@ -15,6 +15,9 @@ export type AppColors = {
   mint: string;
   onMint: string;
   forest: string;
+  forestFill: string;
+  onForest: string;
+  onForestMuted: string;
   success: string;
   warning: string;
   warningBg: string;
@@ -52,6 +55,9 @@ export const lightColors: AppColors = {
   mint: '#E7F6ED',
   onMint: '#163D32',
   forest: '#163D32',
+  forestFill: '#163D32',
+  onForest: '#F4FBF7',
+  onForestMuted: '#C9DDD2',
   success: '#26745A',
   warning: '#8A5A12',
   warningBg: '#F8EFD9',
@@ -89,6 +95,9 @@ export const darkColors: AppColors = {
   mint: '#1C3328',
   onMint: '#E7F6ED',
   forest: '#E7F6ED',
+  forestFill: '#1A332C',
+  onForest: '#F4FBF7',
+  onForestMuted: '#C9DDD2',
   success: '#7DCEA8',
   warning: '#E3C07A',
   warningBg: '#3A2E18',

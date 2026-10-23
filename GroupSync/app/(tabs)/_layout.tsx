@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
+import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Loading } from '@/components/ui';
@@ -8,6 +9,11 @@ import { useTheme } from '@/features/theme/ThemeProvider';
 import { usePhoneAlerts } from '@/hooks/usePhoneAlerts';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { usePrefersReducedMotion } from '@/lib/motion';
+import { radius } from '@/lib/theme';
+
+function TabButton({ style, ...props }: PressableProps) {
+  return <Pressable {...props} style={[style as StyleProp<ViewStyle>, { borderRadius: radius.md, overflow: 'hidden' }]} />;
+}
 
 const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
   index: 'home',
@@ -37,23 +43,25 @@ export default function TabLayout() {
         transitionSpec: reduceMotion ? undefined : { animation: 'timing', config: { duration: 200 } },
         tabBarPosition: 'bottom',
         tabBarLabelPosition: 'below-icon',
-        tabBarActiveTintColor: colors.onMint,
+        tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
-        tabBarActiveBackgroundColor: colors.mint,
+        tabBarActiveBackgroundColor: 'transparent',
         tabBarInactiveBackgroundColor: 'transparent',
         tabBarStyle: {
-          height: 62 + insets.bottom,
-          paddingTop: 8,
-          paddingBottom: Math.max(insets.bottom, 10),
+          height: 58 + insets.bottom,
+          paddingTop: 6,
+          paddingBottom: Math.max(insets.bottom, 8),
           borderTopColor: colors.border,
+          borderTopWidth: 1,
           backgroundColor: colors.surface,
         },
-        tabBarItemStyle: { borderRadius: 14, marginHorizontal: 4, marginVertical: 2 },
-        tabBarLabelStyle: { fontWeight: '700', fontSize: 11 },
-        tabBarIcon: ({ color, focused, size }) => (
+        tabBarItemStyle: { borderRadius: radius.md, marginHorizontal: 2 },
+        tabBarButton: (props) => <TabButton {...props} />,
+        tabBarLabelStyle: { fontWeight: '600', fontSize: 11, marginTop: 2 },
+        tabBarIcon: ({ color, focused }) => (
           <Ionicons
             name={focused ? icons[route.name] : `${icons[route.name]}-outline` as keyof typeof Ionicons.glyphMap}
-            size={size}
+            size={22}
             color={color}
           />
         ),

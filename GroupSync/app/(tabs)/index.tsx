@@ -2,9 +2,9 @@ import React, { useMemo } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { Button, Card, EmptyState, ErrorText, Loading, Page, Pill, ProgressBar, Section } from '@/components/ui';
 import { Ionicons } from '@expo/vector-icons';
+
+import { Button, Card, EmptyState, ErrorText, Loading, Page, ProgressBar, Section } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -62,21 +62,27 @@ export default function HomeScreen() {
 
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
   const firstName = profile?.display_name?.split(' ')[0];
+  const quick = [
+    ['Task', 'add-circle-outline', '/create-task'],
+    ['Meeting', 'calendar-outline', '/create-event'],
+    ['Log', 'create-outline', '/progress'],
+    ['Notices', 'notifications-outline', '/notifications'],
+  ] as const;
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <Page>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }} refreshControl={refreshControl}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }} refreshControl={refreshControl}>
           <View style={styles.greeting}>
             <View style={{ flex: 1 }}>
               <Text style={styles.date}>{today}</Text>
-              <Text style={styles.greet}>{firstName ? `Hello, ${firstName}` : 'Hello'}</Text>
+              <Text style={styles.greet} numberOfLines={1}>{firstName ? `Hello, ${firstName}` : 'Hello'}</Text>
               <Text style={styles.quiet}>
                 {openMine.length} open task{openMine.length === 1 ? '' : 's'}
                 {overdue.length ? ` · ${overdue.length} overdue` : ''}
               </Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Profile" onPress={() => router.push('/(tabs)/profile')}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Profile" onPress={() => router.push('/(tabs)/profile')} style={({ pressed }) => pressed && styles.pressed}>
               {profile?.avatar_url ? (
                 <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
               ) : (
@@ -87,46 +93,62 @@ export default function HomeScreen() {
 
           {error ? <ErrorText>{error}</ErrorText> : null}
 
-          {!activeGroups.length ? (
-            <View style={styles.hero}>
-              <Text style={styles.kicker}>Start here</Text>
-              <Text style={styles.nextTitle}>One project is enough to begin</Text>
-              <Text style={styles.heroQuiet}>Invite people later, or keep the work to yourself until the team is ready.</Text>
-              <Button title="Create a project" onPress={() => router.push('/create-group')} light />
-            </View>
-          ) : (
-            <View style={styles.hero}>
-              <Text style={styles.kicker}>Work on this next</Text>
-              <Text style={styles.nextTitle}>{nextTask?.title || 'Nothing is waiting on you'}</Text>
-              <Text style={styles.heroQuiet}>
-                {nextTask
-                  ? `${nextTask.group?.name || 'Personal'} · ${nextTask.due_at ? `due ${formatDate(nextTask.due_at)}` : 'no due date'}${overdue.length ? ` · ${overdue.length} overdue` : ''}`
-                  : 'Add a task when you know the next piece of work.'}
-              </Text>
-              <View style={styles.actions}>
-                {nextTask ? <Button title="Open task" onPress={() => router.push(`/task/${nextTask.id}`)} light /> : null}
-                <Button title="Build a plan" onPress={() => router.push({ pathname: '/plan', params: { groupId: activeGroups[0]?.id } })} secondary />
-              </View>
-            </View>
-          )}
+          <View style={styles.hero}>
+            {!activeGroups.length ? (
+              <>
+                <Text style={styles.kicker}>Start here</Text>
+                <Text style={styles.nextTitle}>One project is enough to begin</Text>
+                <Text style={styles.heroQuiet}>Invite people later, or keep the work to yourself until the team is ready.</Text>
+                <Button title="Create a project" onPress={() => router.push('/create-group')} tone="forest" style={styles.soloButton} />
+              </>
+            ) : (
+              <>
+                <Text style={styles.kicker}>Work on this next</Text>
+                <Text style={styles.nextTitle} numberOfLines={2}>{nextTask?.title || 'Nothing is waiting on you'}</Text>
+                <Text style={styles.heroQuiet}>
+                  {nextTask
+                    ? `${nextTask.group?.name || 'Personal'} · ${nextTask.due_at ? `Due ${formatDate(nextTask.due_at)}` : 'No due date'}${overdue.length ? ` · ${overdue.length} overdue` : ''}`
+                    : 'Add a task when you know the next piece of work.'}
+                </Text>
+                <View style={styles.heroActions}>
+                  {nextTask ? (
+                    <Button title="Open task" onPress={() => router.push(`/task/${nextTask.id}`)} tone="forest" style={styles.heroButton} />
+                  ) : null}
+                  <Button
+                    title="Build a plan"
+                    onPress={() => router.push({ pathname: '/plan', params: { groupId: activeGroups[0]?.id } })}
+                    tone="forest"
+                    secondary
+                    style={styles.heroButton}
+                  />
+                </View>
+              </>
+            )}
+          </View>
 
-          <View style={styles.quick}>
-            {([
-              ['Task', 'add-circle-outline', '/create-task'],
-              ['Meeting', 'calendar-outline', '/create-event'],
-              ['Log', 'create-outline', '/progress'],
-              ['Notices', 'notifications-outline', '/notifications'],
-            ] as const).map(([label, icon, href]) => (
-              <Pressable key={label} accessibilityRole="button" accessibilityLabel={label} onPress={() => router.push(href)} style={({ pressed }) => [styles.quickItem, pressed && styles.pressed]}>
-                <Ionicons name={icon} size={18} color={colors.primary} />
-                <Text style={styles.quickText}>{label}{label === 'Notices' && unread ? ` ${unread}` : ''}</Text>
+          <View style={styles.toolbar}>
+            {quick.map(([label, icon, href], index) => (
+              <Pressable
+                key={label}
+                accessibilityRole="button"
+                accessibilityLabel={label === 'Notices' && unread ? `Notices, ${unread} unread` : label}
+                onPress={() => router.push(href)}
+                style={({ pressed }) => [styles.quickItem, index > 0 && styles.quickRule, pressed && styles.pressed]}
+              >
+                <View>
+                  <Ionicons name={icon} size={20} color={colors.primary} />
+                  {label === 'Notices' && unread ? (
+                    <View style={styles.badge}><Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text></View>
+                  ) : null}
+                </View>
+                <Text style={styles.quickText}>{label}</Text>
               </Pressable>
             ))}
           </View>
 
           {conflicts.length ? (
             <Card>
-              <Text style={styles.cardTitle}>Schedule conflicts</Text>
+              <Text style={styles.rowTitle}>Schedule conflicts</Text>
               {conflicts.slice(0, 3).map((conflict) => (
                 <Text key={`${conflict.a}-${conflict.b}`} style={styles.quiet}>{conflict.a} and {conflict.b}. {conflict.reason}</Text>
               ))}
@@ -135,45 +157,66 @@ export default function HomeScreen() {
           ) : null}
 
           <Section>Coming up</Section>
-          {upcomingEvents.length ? upcomingEvents.map((event) => (
-            <Pressable key={event.id} accessibilityRole="button" onPress={() => router.push(`/event/${event.id}`)}>
-              <Card style={styles.rowCard}>
-                <View style={[styles.bar, { backgroundColor: event.group?.color || colors.primary }]} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle}>{event.title}</Text>
-                  <Text style={styles.quiet}>{event.group?.name} · {formatDate(event.starts_at)} at {formatTime(event.starts_at)}</Text>
-                </View>
-                <Pill>{event.kind}</Pill>
-              </Card>
+          {upcomingEvents.length ? upcomingEvents.map((event, index) => (
+            <Pressable
+              key={event.id}
+              accessibilityRole="button"
+              accessibilityLabel={event.title}
+              onPress={() => router.push(`/event/${event.id}`)}
+              style={({ pressed }) => [styles.agendaRow, index > 0 && styles.rule, pressed && styles.pressed]}
+            >
+              <View style={styles.timeCol}>
+                <Text style={styles.time}>{formatTime(event.starts_at)}</Text>
+                <Text style={styles.timeDate}>{formatDate(event.starts_at, { month: 'short', day: 'numeric' })}</Text>
+              </View>
+              <View style={[styles.mark, { backgroundColor: event.group?.color || colors.primary }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle} numberOfLines={1}>{event.title}</Text>
+                <Text style={styles.meta} numberOfLines={1}>{event.group?.name || 'Project'} · {event.kind}</Text>
+              </View>
             </Pressable>
-          )) : <EmptyState title="No upcoming events" body="Meetings and deadlines from your projects show up here." />}
+          )) : (
+            <EmptyState compact title="Nothing scheduled" body="Meetings and deadlines from your projects show up here." />
+          )}
 
-          <Section>Projects</Section>
-          {activeGroups.slice(0, 3).map((group) => {
-            const groupTasks = tasks.filter((task) => task.group_id === group.id);
-            const percent = completionPercent(groupTasks);
-            return (
-              <Pressable key={group.id} accessibilityRole="button" onPress={() => router.push(`/group/${group.id}`)}>
-                <Card>
-                  <Text style={styles.cardTitle}>{group.name}</Text>
-                  <ProgressBar
-                    value={percent}
-                    color={group.color || colors.primary}
-                    label={`${percent}% of tasks complete${group.deadline ? ` · due ${formatDate(group.deadline)}` : ''}`}
-                  />
-                </Card>
-              </Pressable>
-            );
-          })}
+          {activeGroups.length ? (
+            <>
+              <Section>Projects</Section>
+              <View style={styles.projectBlock}>
+                {activeGroups.slice(0, 3).map((group, index) => {
+                  const percent = completionPercent(tasks.filter((task) => task.group_id === group.id));
+                  return (
+                    <Pressable
+                      key={group.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={group.name}
+                      onPress={() => router.push(`/group/${group.id}`)}
+                      style={({ pressed }) => [styles.projectRow, index > 0 && styles.rule, pressed && styles.pressed]}
+                    >
+                      <View style={styles.projectTop}>
+                        <View style={[styles.dot, { backgroundColor: group.color || colors.primary }]} />
+                        <Text style={styles.rowTitle} numberOfLines={1}>{group.name}</Text>
+                        <Text style={styles.percent}>{percent}%</Text>
+                      </View>
+                      <Text style={styles.meta}>{group.deadline ? `Due ${formatDate(group.deadline)}` : 'No deadline'}</Text>
+                      <ProgressBar value={percent} color={group.color || colors.primary} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          ) : null}
 
           <Section>Team updates</Section>
-          {logs.length ? logs.slice(0, 3).map((log) => (
-            <Card key={log.id}>
-              <Text style={styles.cardTitle}>{log.profile?.display_name || 'Teammate'}</Text>
-              <Text style={styles.quiet}>{log.group?.name} · {formatDate(log.log_date)}</Text>
-              <Text style={styles.body}>{log.accomplishments}</Text>
-            </Card>
-          )) : <EmptyState title="No progress logs yet" body="A short update tells the team what actually got finished." />}
+          {logs.length ? logs.slice(0, 3).map((log, index) => (
+            <View key={log.id} style={[styles.update, index > 0 && styles.updateGap]}>
+              <Text style={styles.rowTitle}>{log.profile?.display_name || 'Teammate'}</Text>
+              <Text style={styles.meta}>{log.group?.name || 'Project'} · {formatDate(log.log_date)}</Text>
+              <Text style={styles.body} numberOfLines={2}>{log.accomplishments}</Text>
+            </View>
+          )) : (
+            <EmptyState compact title="No updates yet" body="A short progress log tells the team what actually got finished." />
+          )}
         </ScrollView>
       </Page>
     </SafeAreaView>
@@ -182,26 +225,42 @@ export default function HomeScreen() {
 
 function createStyles(colors: AppColors) {
   return {
-  greeting: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, gap: 12, marginBottom: 16 },
-  date: { color: colors.primary, fontSize: 12, fontWeight: '800' as const, letterSpacing: 0.4 },
-  greet: { color: colors.ink, fontSize: 28, fontWeight: '800' as const, marginTop: 4 },
-  quiet: { color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 4 },
-  avatar: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.mint, alignItems: 'center' as const, justifyContent: 'center' as const },
-  avatarImage: { width: 44, height: 44, borderRadius: 14 },
-  avatarText: { color: colors.primaryDark, fontWeight: '800' as const, fontSize: 18 },
-  kicker: { color: '#B8E5C8', fontSize: 12, fontWeight: '700' as const, letterSpacing: 0.6, textTransform: 'uppercase' as const },
-  hero: { backgroundColor: '#163D32', borderRadius: 22, padding: 18, marginBottom: 14 },
-  heroQuiet: { color: '#D7EBE3', fontSize: 14, lineHeight: 20, marginTop: 8 },
-  nextTitle: { color: '#F4FBF7', fontSize: 24, lineHeight: 30, fontWeight: '700' as const, marginTop: 8, letterSpacing: -0.4 },
-  pressed: { opacity: 0.72 },
-  actions: { gap: 4, marginTop: 4 },
-  quick: { flexDirection: 'row' as const, gap: 8, marginBottom: 4 },
-  quickItem: { flex: 1, backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.line, paddingVertical: 12, alignItems: 'center' as const, gap: 6 },
-  quickText: { color: colors.primaryDark, fontWeight: '800' as const, fontSize: 12 },
-  cardTitle: { color: colors.ink, fontWeight: '800' as const, fontSize: 15 },
-  rowCard: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 10 },
-  bar: { width: 4, height: 36, borderRadius: 4 },
-  body: { color: colors.ink, marginTop: 8, lineHeight: 20 },
-} as const;
+    greeting: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, gap: 12, marginBottom: 16, marginTop: 4 },
+    date: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' as const },
+    greet: { color: colors.text, fontSize: 28, lineHeight: 32, fontWeight: '700' as const, letterSpacing: -0.6, marginTop: 2 },
+    quiet: { color: colors.textSecondary, fontSize: 13, lineHeight: 18, marginTop: 4 },
+    avatar: { width: 40, height: 40, borderRadius: 14, backgroundColor: colors.mint, alignItems: 'center' as const, justifyContent: 'center' as const },
+    avatarImage: { width: 40, height: 40, borderRadius: 14 },
+    avatarText: { color: colors.onMint, fontWeight: '700' as const, fontSize: 16 },
+    kicker: { color: colors.accent, fontSize: 11, fontWeight: '700' as const, letterSpacing: 0.6, textTransform: 'uppercase' as const },
+    hero: { backgroundColor: colors.forestFill, borderRadius: 18, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 },
+    heroQuiet: { color: colors.onForestMuted, fontSize: 13, lineHeight: 18, marginTop: 6 },
+    nextTitle: { color: colors.onForest, fontSize: 20, lineHeight: 26, fontWeight: '700' as const, marginTop: 6, letterSpacing: -0.3 },
+    heroActions: { flexDirection: 'row' as const, gap: 8, marginTop: 12 },
+    heroButton: { flex: 1, marginTop: 0 },
+    soloButton: { marginTop: 12 },
+    pressed: { opacity: 0.72 },
+    toolbar: { flexDirection: 'row' as const, backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, marginTop: 12, marginBottom: 4, overflow: 'hidden' as const },
+    quickItem: { flex: 1, alignItems: 'center' as const, justifyContent: 'center' as const, gap: 6, paddingVertical: 12, minHeight: 68 },
+    quickRule: { borderLeftWidth: 1, borderLeftColor: colors.border },
+    quickText: { color: colors.text, fontWeight: '600' as const, fontSize: 12 },
+    badge: { position: 'absolute' as const, top: -6, right: -10, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 4, backgroundColor: colors.primary, alignItems: 'center' as const, justifyContent: 'center' as const },
+    badgeText: { color: colors.primaryForeground, fontSize: 9, fontWeight: '700' as const },
+    agendaRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 10, paddingVertical: 10 },
+    rule: { borderTopWidth: 1, borderTopColor: colors.border },
+    timeCol: { width: 52 },
+    time: { color: colors.text, fontSize: 13, fontWeight: '700' as const },
+    timeDate: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
+    mark: { width: 8, height: 8, borderRadius: 4 },
+    rowTitle: { color: colors.text, fontWeight: '700' as const, fontSize: 15 },
+    meta: { color: colors.textSecondary, fontSize: 12, lineHeight: 16, marginTop: 2 },
+    projectBlock: { backgroundColor: colors.surface, borderRadius: 18, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14, marginBottom: 4 },
+    projectRow: { paddingVertical: 12 },
+    projectTop: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 },
+    dot: { width: 8, height: 8, borderRadius: 4 },
+    percent: { color: colors.textSecondary, fontSize: 13, fontWeight: '700' as const, marginLeft: 'auto' as const },
+    update: { paddingBottom: 2 },
+    updateGap: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border },
+    body: { color: colors.textSecondary, marginTop: 4, lineHeight: 20, fontSize: 14 },
+  } as const;
 }
-

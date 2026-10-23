@@ -12,6 +12,7 @@ import {
   Loading,
   Page,
   Pill,
+  Segmented,
   priorityTone,
   statusTone,
 } from '@/components/ui';
@@ -22,7 +23,7 @@ import { assigneeLabel, formatDate } from '@/lib/format';
 import { taskStatusLabel } from '@/lib/planner/status';
 import { useTheme } from '@/features/theme/ThemeProvider';
 import type { AppColors } from '@/lib/theme';
-import { radius, type } from '@/lib/theme';
+import { type } from '@/lib/theme';
 import { preferredTimeZone } from '@/lib/timezone';
 import type { Task, TaskStatus } from '@/types/database';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -116,7 +117,7 @@ export default function TasksScreen() {
             <Text style={styles.screenTitle}>My Tasks</Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Search tasks"
+              accessibilityLabel={searchOpen ? 'Close search' : 'Search tasks'}
               accessibilityState={{ expanded: searchOpen }}
               onPress={() => {
                 setSearchOpen((open) => !open);
@@ -125,30 +126,15 @@ export default function TasksScreen() {
               hitSlop={8}
               style={({ pressed }) => [styles.iconButton, pressed && styles.iconPressed]}
             >
-              <Ionicons name="options-outline" size={22} color={colors.ink} />
+              <Ionicons name={searchOpen ? 'close' : 'search'} size={22} color={colors.text} />
             </Pressable>
           </View>
 
-          <View style={styles.views}>
-            {views.map((item) => {
-              const selected = view === item.id;
-              return (
-                <Pressable
-                  key={item.id}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  onPress={() => setView(item.id)}
-                  style={({ pressed }) => [styles.viewChip, selected && styles.viewChipOn, pressed && !selected && styles.viewChipPressed]}
-                >
-                  <Text style={[styles.viewLabel, selected && styles.viewLabelOn]}>{item.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <Segmented options={views} value={view} onChange={(id) => setView(id as TaskView)} />
 
-          <View style={styles.summary}>
-            <Text style={styles.summaryCount}>{scopeLabel.toUpperCase()} · {visible.length} {visible.length === 1 ? 'TASK' : 'TASKS'}</Text>
-          </View>
+          <Text style={styles.summaryCount}>
+            {visible.length} {visible.length === 1 ? 'task' : 'tasks'} · {scopeLabel}
+          </Text>
 
           {searchOpen ? (
             <Field label="Search" value={query} onChangeText={setQuery} placeholder="Search titles and descriptions" autoCapitalize="none" />
@@ -158,39 +144,35 @@ export default function TasksScreen() {
 
           {visible.length ? (
             visible.map(task => (
-              <Card
-                key={task.id}
-                style={styles.task}
-              >
-                <Pressable accessibilityRole="button" onPress={() => router.push(`/task/${task.id}`)} style={styles.taskBody}>
-                  <Text style={[styles.taskTitle, task.status === 'completed' && styles.taskDone]}>{task.title}</Text>
-                  <Text style={styles.meta}>
-                    {task.group?.name || 'Personal'} · {assigneeLabel(task.assignments)} · Due{' '}
-                    {formatDate(task.due_at)}
-                  </Text>
-                  <View style={styles.pills}>
-                    <Pill tone={priorityTone(task.priority)}>{task.priority}</Pill>
-                    <Pill tone={statusTone(task.status)}>{label[task.status]}</Pill>
-                  </View>
-                </Pressable>
-
+              <Card key={task.id} style={styles.task}>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityState={{ busy: pendingId === task.id, checked: task.status === 'completed' }}
                   accessibilityLabel={task.status === 'completed' ? 'Mark not finished' : 'Mark finished'}
                   disabled={pendingId === task.id}
                   onPress={() => void toggleFinished(task.id, task.status)}
+                  hitSlop={6}
                   style={({ pressed }) => [styles.check, pressed && styles.checkPressed]}
                 >
                   <View style={[styles.mark, task.status === 'completed' && styles.markOn, pendingId === task.id && styles.markBusy]}>
-                    <Text style={styles.markGlyph}>{task.status === 'completed' ? '✓' : ''}</Text>
+                    {task.status === 'completed' ? <Ionicons name="checkmark" size={15} color={colors.primaryForeground} /> : null}
                   </View>
-                  <Text style={styles.checkLabel}>{pendingId === task.id ? 'Saving' : task.status === 'completed' ? 'Finished' : 'Finish'}</Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel={task.title} onPress={() => router.push(`/task/${task.id}`)} style={styles.taskBody}>
+                  <Text style={[styles.taskTitle, task.status === 'completed' && styles.taskDone]} numberOfLines={2}>{task.title}</Text>
+                  <Text style={styles.meta} numberOfLines={1}>
+                    {task.group?.name || 'Personal'} · {assigneeLabel(task.assignments)} · {task.due_at ? formatDate(task.due_at) : 'No due date'}
+                  </Text>
+                  <View style={styles.pills}>
+                    <Pill tone={priorityTone(task.priority)}>{task.priority}</Pill>
+                    <Pill tone={statusTone(task.status)}>{label[task.status]}</Pill>
+                  </View>
                 </Pressable>
               </Card>
             ))
           ) : (
             <EmptyState
+              compact
               title={query.trim() ? 'No tasks match this search' : view === 'today' ? 'Nothing due today' : view === 'upcoming' ? 'Nothing coming up' : 'No tasks yet'}
               body={
                 query.trim()
@@ -214,126 +196,22 @@ export default function TasksScreen() {
 
 function createStyles(colors: AppColors) {
   return {
-  head: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  screenTitle: {
-    color: colors.ink,
-    fontSize: type.title,
-    fontWeight: '800',
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconPressed: {
-    opacity: 0.6,
-  },
-  views: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 16,
-  },
-  viewChip: {
-    borderRadius: radius.pill,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  viewChipOn: {
-    backgroundColor: colors.primary,
-  },
-  viewChipPressed: {
-    backgroundColor: colors.mint,
-  },
-  viewLabel: {
-    color: colors.muted,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  viewLabelOn: {
-    color: colors.onPrimary,
-  },
-  summary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 14,
-  },
-  summaryCount: {
-    color: colors.faint,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-  },
-  task: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  taskBody: {
-    flex: 1,
-  },
-  taskTitle: {
-    color: colors.ink,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  taskDone: {
-    color: colors.muted,
-  },
-  meta: {
-    color: colors.muted,
-    fontSize: 12,
-    marginTop: 5,
-  },
-  pills: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 10,
-  },
-  check: {
-    alignItems: 'center',
-    padding: 8,
-    minWidth: 64,
-  },
-  checkPressed: {
-    opacity: 0.7,
-  },
-  mark: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  markOn: {
-    backgroundColor: colors.primary,
-  },
-  markBusy: {
-    opacity: 0.45,
-  },
-  markGlyph: {
-    color: colors.onPrimary,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  checkLabel: {
-    color: colors.primary,
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-} as const;
+    head: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, marginBottom: 14, marginTop: 4 },
+    screenTitle: { color: colors.text, fontSize: type.title, lineHeight: 32, fontWeight: '700' as const, letterSpacing: -0.6 },
+    iconButton: { width: 40, height: 40, borderRadius: 12, alignItems: 'center' as const, justifyContent: 'center' as const, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+    iconPressed: { opacity: 0.6 },
+    summaryCount: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' as const, marginTop: -6, marginBottom: 10 },
+    task: { flexDirection: 'row' as const, alignItems: 'flex-start' as const, gap: 4, paddingVertical: 12, paddingLeft: 4, paddingRight: 14, marginBottom: 8 },
+    taskBody: { flex: 1, paddingTop: 8 },
+    taskTitle: { color: colors.text, fontSize: 16, lineHeight: 21, fontWeight: '700' as const },
+    taskDone: { color: colors.textSecondary },
+    meta: { color: colors.textSecondary, fontSize: 12, lineHeight: 16, marginTop: 4 },
+    pills: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 6, marginTop: 8 },
+    check: { width: 44, height: 44, alignItems: 'center' as const, justifyContent: 'center' as const },
+    checkPressed: { opacity: 0.7 },
+    mark: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, borderColor: colors.primary, alignItems: 'center' as const, justifyContent: 'center' as const, backgroundColor: colors.surface },
+    markOn: { backgroundColor: colors.primary },
+    markBusy: { opacity: 0.45 },
+  } as const;
 }
 
