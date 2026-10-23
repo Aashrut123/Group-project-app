@@ -49,7 +49,7 @@ export const GOAL_PRESETS: GoalPreset[] = [
     id: 'club',
     label: 'Club or organization',
     detail: 'Events, owners, and follow-through.',
-    milestones: ['Agree on the plan', 'Assign owners', 'Tell people', 'Run it'],
+    milestones: ['Agree on the plan', 'Assign owners', 'Tell people'],
     phases: [
       { name: 'Plan', summary: 'Agree on the outcome and the date.' },
       { name: 'Owners', summary: 'Give each piece a person.' },
@@ -72,7 +72,7 @@ export const GOAL_PRESETS: GoalPreset[] = [
     id: 'personal',
     label: 'Personal organization',
     detail: 'Priorities, deadlines, and a daily plan.',
-    milestones: ['This week’s priority', 'Time blocked', 'Weekly review'],
+    milestones: ['This week’s priority', 'Weekly review'],
     phases: [
       { name: 'Choose', summary: 'Pick the one outcome that matters this week.' },
       { name: 'Schedule', summary: 'Put the work on days you can actually use.' },

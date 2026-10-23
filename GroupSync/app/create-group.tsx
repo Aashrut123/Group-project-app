@@ -37,8 +37,9 @@ export default function CreateGroupScreen() {
   const { profile } = useAuth();
   const { refresh } = useWorkspace();
   const suggestions = suggestedMilestones(profile?.goals, profile?.custom_goal);
-  const [picked, setPicked] = useState<string[] | null>(null);
-  const chosenMilestones = picked ?? suggestions;
+  const [selected, setSelected] = useState<string[]>([]);
+  const [customs, setCustoms] = useState<string[]>([]);
+  const [customTitle, setCustomTitle] = useState('');
 
   const [name, setName] = useState(firstParam(params.name));
   const [description, setDescription] = useState('');
@@ -48,6 +49,25 @@ export default function CreateGroupScreen() {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  const options = [...suggestions, ...customs.filter((title) => !suggestions.some((item) => item.toLowerCase() === title.toLowerCase()))];
+
+  const toggle = (title: string) => {
+    setSelected((current) => (current.includes(title) ? current.filter((item) => item !== title) : [...current, title]));
+  };
+
+  const addCustom = () => {
+    const title = customTitle.trim().slice(0, 140);
+    if (!title) return;
+    const existing = options.find((item) => item.toLowerCase() === title.toLowerCase());
+    if (existing) {
+      setSelected((current) => (current.includes(existing) ? current : [...current, existing]));
+    } else {
+      setCustoms((current) => [...current, title]);
+      setSelected((current) => [...current, title]);
+    }
+    setCustomTitle('');
+  };
 
   const create = async () => {
     if (!name.trim()) {
@@ -80,10 +100,16 @@ export default function CreateGroupScreen() {
       warning = 'The project was created. Apply the latest database migration to store the outcome and deadline.';
     }
 
-    if (!issue && created && chosenMilestones.length) {
-      const milestoneRows = await supabase.from('milestones').insert(
-        chosenMilestones.map((title) => ({ group_id: created.id, title })),
-      );
+    const pending = customTitle.trim().slice(0, 140);
+    const chosen = options.filter((title) => selected.includes(title));
+    if (pending && !chosen.some((title) => title.toLowerCase() === pending.toLowerCase())) chosen.push(pending);
+
+    if (!issue && created && chosen.length) {
+      const withOrder = chosen.map((title, index) => ({ group_id: created.id, title, sort_order: index }));
+      let milestoneRows = await supabase.from('milestones').insert(withOrder);
+      if (milestoneRows.error && /sort_order/.test(milestoneRows.error.message)) {
+        milestoneRows = await supabase.from('milestones').insert(chosen.map((title) => ({ group_id: created.id, title })));
+      }
       if (milestoneRows.error) {
         warning = warning || `The project was created, but milestones were not saved: ${milestoneRows.error.message}`;
       }
@@ -139,25 +165,30 @@ export default function CreateGroupScreen() {
         {profile?.planning_style ? (
           <Text style={styles.hint}>{PLANNING_STYLES.find((item) => item.id === profile.planning_style)?.detail}</Text>
         ) : null}
-        {suggestions.length ? (
-          <>
-            <Text style={styles.label}>Suggested milestones</Text>
-            <Text style={styles.hint}>These come from your goals. Turn off any you do not want. They are saved only when you create the project.</Text>
-            <View style={styles.choices}>
-              {suggestions.map((title) => (
-                <Chip
-                  key={title}
-                  label={title}
-                  active={chosenMilestones.includes(title)}
-                  onPress={() => {
-                    const current = picked ?? suggestions;
-                    setPicked(current.includes(title) ? current.filter((item) => item !== title) : [...current, title]);
-                  }}
-                />
-              ))}
-            </View>
-          </>
+        <Text style={styles.label}>Milestones</Text>
+        <Text style={styles.hint}>Suggestions stay off until you tap them. Add your own, then create the project.</Text>
+        {options.length ? (
+          <View style={styles.choices}>
+            {options.map((title) => (
+              <Chip
+                key={title}
+                label={title}
+                active={selected.includes(title)}
+                onPress={() => toggle(title)}
+              />
+            ))}
+          </View>
         ) : null}
+        <Field
+          label="Custom milestone"
+          placeholder="e.g. Working prototype"
+          value={customTitle}
+          onChangeText={setCustomTitle}
+          maxLength={140}
+          onSubmitEditing={addCustom}
+          returnKeyType="done"
+        />
+        <Button title="Add milestone" onPress={addCustom} secondary disabled={!customTitle.trim() || busy} />
 
         <Text style={styles.label}>Group color</Text>
 
