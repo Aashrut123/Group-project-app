@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, Text } from 'react-native';
 
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { DateField } from '@/components/DateField';
 import {
@@ -32,8 +32,10 @@ export default function CreateTaskScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const { groups, refresh } = useWorkspace();
+  const params = useLocalSearchParams<{ groupId?: string | string[] }>();
+  const openedFrom = Array.isArray(params.groupId) ? params.groupId[0] ?? '' : params.groupId ?? '';
 
-  const [groupId, setGroupId] = useState('');
+  const [groupId, setGroupId] = useState(openedFrom);
   const [members, setMembers] = useState<Membership[]>([]);
   const [milestones, setMilestones] = useState<Pick<Milestone, 'id' | 'title'>[]>([]);
   const [milestoneId, setMilestoneId] = useState('');

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, ScrollView, Text } from 'react-native';
 
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { DateField } from '@/components/DateField';
 import {
@@ -25,8 +25,10 @@ export default function CreateEventScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const { groups, refresh } = useWorkspace();
+  const params = useLocalSearchParams<{ groupId?: string | string[] }>();
+  const openedFrom = Array.isArray(params.groupId) ? params.groupId[0] ?? '' : params.groupId ?? '';
 
-  const [groupId, setGroupId] = useState('');
+  const [groupId, setGroupId] = useState(openedFrom);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [startsAt, setStartsAt] = useState<Date | null>(null);

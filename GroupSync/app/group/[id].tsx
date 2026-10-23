@@ -580,7 +580,7 @@ export default function GroupDetailScreen() {
           </Text>
 
           <Text
-            onPress={() => router.push('/create-event')}
+            onPress={() => router.push({ pathname: '/create-event', params: { groupId: String(id) } })}
             style={styles.link}
           >
             ＋ Add
@@ -711,7 +711,7 @@ export default function GroupDetailScreen() {
           </Text>
 
           <Text
-            onPress={() => router.push('/create-task')}
+            onPress={() => router.push({ pathname: '/create-task', params: { groupId: String(id) } })}
             style={styles.link}
           >
             ＋ Add
