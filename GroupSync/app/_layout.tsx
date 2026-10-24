@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Text, View, Pressable } from 'react-native';
 import { AppFrame } from '@/components/AppFrame';
 import { AuthProvider } from '@/features/auth/AuthProvider';
+import { ThemeProvider, useTheme } from '@/features/theme/ThemeProvider';
 import { theme } from '@/lib/theme';
 import { AppearanceProvider } from '@/lib/AppearanceProvider';
 
@@ -66,32 +67,30 @@ export function ErrorBoundary({
   );
 }
 
-export default function RootLayout() {
+function RootNavigator() {
+  const { colors, scheme } = useTheme();
   return (
-    <AuthProvider>
-      <AppearanceProvider>
-        <AppFrame>
-        <StatusBar style="light" />
-
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            headerStyle: {
-              backgroundColor: theme.colors.background,
-            },
-            headerTintColor: theme.colors.primary,
-            headerTitleStyle: {
-              color: '#F4F7FC',
-              fontWeight: '800',
-            },
-            headerShadowVisible: false,
-            animation: 'fade',
-            animationDuration: 220,
-            contentStyle: {
-              backgroundColor: theme.colors.background,
-            },
-          }}
-        >
+    <>
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          headerStyle: {
+            backgroundColor: colors.background,
+          },
+          headerTintColor: colors.primary,
+          headerTitleStyle: {
+            color: colors.text,
+            fontWeight: '800',
+          },
+          headerShadowVisible: false,
+          animation: 'fade',
+          animationDuration: 220,
+          contentStyle: {
+            backgroundColor: colors.background,
+          },
+        }}
+      >
           <Stack.Screen name="(tabs)" />
           <Stack.Screen
             name="onboarding"
@@ -197,8 +196,20 @@ export default function RootLayout() {
             }}
           />
         </Stack>
-        </AppFrame>
-      </AppearanceProvider>
-    </AuthProvider>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <AppearanceProvider>
+          <AppFrame>
+            <RootNavigator />
+          </AppFrame>
+        </AppearanceProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

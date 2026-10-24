@@ -21,12 +21,14 @@ import { preferredTimeZone, timezoneChoices, timezoneLabel } from '@/lib/timezon
 import { phoneAlertsPreference, setPhoneAlerts, syncPhoneAlerts, type AlertPreference } from '@/lib/phoneAlerts';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/features/theme/ThemeProvider';
+import { useAppearance } from '@/lib/AppearanceProvider';
 import type { AppColors } from '@/lib/theme';
 import * as ImagePicker from 'expo-image-picker';
 import AppearanceSheet from '@/components/AppearanceSheet';
 
 export default function ProfileScreen() {
   const { colors, preference, setPreference } = useTheme();
+  const { setThemeName } = useAppearance();
   const styles = createStyles(colors);
   const { user, profile, loading, refreshProfile } = useAuth();
   const { tasks, events, refresh } = useWorkspace();
@@ -267,7 +269,11 @@ export default function ProfileScreen() {
             <Text style={styles.about}>GroupSync follows your phone until you choose a theme.</Text>
             <View style={styles.zones}>
               {(['system', 'light', 'dark'] as const).map((option) => (
-                <Chip key={option} label={option === 'system' ? 'System' : option === 'light' ? 'Light' : 'Dark'} active={preference === option} onPress={() => setPreference(option)} />
+                <Chip key={option} label={option === 'system' ? 'System' : option === 'light' ? 'Light' : 'Dark'} active={preference === option} onPress={() => {
+                  setPreference(option);
+                  if (option === 'light') setThemeName('Light');
+                  if (option === 'dark') setThemeName('Dark');
+                }} />
               ))}
             </View>
           </Card>

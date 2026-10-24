@@ -9,6 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '@/features/theme/ThemeProvider';
 import { APPEARANCE_THEMES, useAppearance } from '@/lib/AppearanceProvider';
 
 
@@ -33,6 +34,7 @@ export default function AppearanceSheet({
     reducedMotion,
     setReducedMotion,
   } = useAppearance();
+  const { setPreference } = useTheme();
 
   return (
     <Modal
@@ -94,7 +96,11 @@ export default function AppearanceSheet({
                 return (
                   <Pressable
                     key={item.name}
-                    onPress={() => setThemeName(item.name)}
+                    onPress={() => {
+                      setThemeName(item.name);
+                      if (item.name === 'Light') setPreference('light');
+                      if (item.name === 'Dark') setPreference('dark');
+                    }}
                     accessibilityRole="radio"
                     accessibilityState={{ selected }}
                     accessibilityLabel={`${item.name} theme`}
