@@ -3,11 +3,13 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Image,
+  Pressable,
   ScrollView,
   Text,
   View,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { DateField } from '@/components/DateField';
 import {
@@ -68,6 +70,17 @@ export default function GroupDetailScreen() {
   const reduceMotion = usePrefersReducedMotion();
   const [milestoneTitle, setMilestoneTitle] = useState('');
   const [milestoneDate, setMilestoneDate] = useState<Date | null>(null);
+  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
+
+  const toggleFinished = (taskId: string, status: Task['status']) => {
+    if (pendingTaskId) return;
+    setPendingTaskId(taskId);
+    void updateTaskStatus(taskId, status === 'completed' ? 'todo' : 'completed')
+      .catch((cause: unknown) => {
+        setError(cause instanceof Error ? cause.message : 'Could not update the task.');
+      })
+      .finally(() => setPendingTaskId((current) => (current === taskId ? null : current)));
+  };
 
   const load = useCallback(async () => {
     const [g, m, e, t] = await Promise.all([
@@ -722,37 +735,36 @@ export default function GroupDetailScreen() {
           projectTasks.map(task => (
             <Card
               key={task.id}
-              style={styles.item}
+              style={styles.taskRow}
             >
-              <Text
-                onPress={() =>
-                  router.push(`/task/${task.id}`)
-                }
-                style={styles.itemTitle}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ busy: pendingTaskId === task.id, checked: task.status === 'completed' }}
+                accessibilityLabel={task.status === 'completed' ? 'Mark not finished' : 'Mark finished'}
+                disabled={pendingTaskId === task.id}
+                onPress={() => toggleFinished(task.id, task.status)}
+                hitSlop={6}
+                style={({ pressed }) => [styles.check, pressed && styles.checkPressed]}
               >
-                {task.title}
-              </Text>
-
-              <Text
-                onPress={() =>
-                  router.push(`/task/${task.id}`)
-                }
-                style={styles.muted}
+                <View style={[styles.mark, task.status === 'completed' && styles.markOn, pendingTaskId === task.id && styles.markBusy]}>
+                  {task.status === 'completed' ? <Ionicons name="checkmark" size={15} color={colors.primaryForeground} /> : null}
+                </View>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={task.title}
+                onPress={() => router.push(`/task/${task.id}`)}
+                style={styles.taskBody}
               >
-                {taskStatusLabel(task.status)} ·{' '}
-                {formatDate(task.due_at)}
-                {task.milestone_id ? ` · ${milestones.find((item) => item.id === task.milestone_id)?.title || 'Milestone'}` : ''}
-              </Text>
-              <Text
-                onPress={() => {
-                  void updateTaskStatus(task.id, task.status === 'completed' ? 'todo' : 'completed').catch((cause: unknown) => {
-                    setError(cause instanceof Error ? cause.message : 'Could not update the task.');
-                  });
-                }}
-                style={styles.link}
-              >
-                {task.status === 'completed' ? 'Mark not finished' : 'Mark finished'}
-              </Text>
+                <Text style={[styles.itemTitle, task.status === 'completed' && styles.taskDone]}>
+                  {task.title}
+                </Text>
+                <Text style={styles.muted}>
+                  {taskStatusLabel(task.status)} ·{' '}
+                  {formatDate(task.due_at)}
+                  {task.milestone_id ? ` · ${milestones.find((item) => item.id === task.milestone_id)?.title || 'Milestone'}` : ''}
+                </Text>
+              </Pressable>
             </Card>
           ))
         ) : (
@@ -902,6 +914,47 @@ function createStyles(colors: AppColors) {
   },
   item: {
     paddingVertical: 13,
+  },
+  taskRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 4,
+    paddingVertical: 10,
+    paddingLeft: 4,
+    paddingRight: 14,
+  },
+  taskBody: {
+    flex: 1,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  taskDone: {
+    color: colors.muted,
+  },
+  check: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkPressed: {
+    opacity: 0.7,
+  },
+  mark: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  markOn: {
+    backgroundColor: colors.primary,
+  },
+  markBusy: {
+    opacity: 0.45,
   },
   itemTitle: {
     color: colors.ink,
