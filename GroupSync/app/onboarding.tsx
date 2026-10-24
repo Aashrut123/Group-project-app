@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { Button, Card, Chip, ErrorText, Field, Page, Pill, ProgressBar, SelectCard, TextButton } from '@/components/ui';
@@ -174,13 +175,16 @@ export default function OnboardingScreen() {
 
   if (!ready) {
     return (
-      <Page>
-        <Text style={styles.body}>Loading your setup…</Text>
-      </Page>
+      <SafeAreaView style={{ flex: 1 }}>
+        <Page>
+          <Text style={styles.body}>Loading your setup…</Text>
+        </Page>
+      </SafeAreaView>
     );
   }
 
   return (
+    <SafeAreaView style={{ flex: 1 }}>
     <Page>
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
         <View style={styles.progress}>
@@ -339,6 +343,7 @@ export default function OnboardingScreen() {
         ) : null}
       </ScrollView>
     </Page>
+    </SafeAreaView>
   );
 }
 

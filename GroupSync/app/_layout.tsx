@@ -6,6 +6,7 @@ import { AppFrame } from '@/components/AppFrame';
 import { Button } from '@/components/ui';
 import { AuthProvider } from '@/features/auth/AuthProvider';
 import { ThemeProvider, useTheme } from '@/features/theme/ThemeProvider';
+import { AppearanceProvider } from '@/lib/AppearanceProvider';
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   const { colors } = useTheme();
@@ -58,11 +59,13 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <AppFrame>
-          <RootNavigator />
-        </AppFrame>
-      </AuthProvider>
+      <AppearanceProvider>
+        <AuthProvider>
+          <AppFrame>
+            <RootNavigator />
+          </AppFrame>
+        </AuthProvider>
+      </AppearanceProvider>
     </ThemeProvider>
   );
 }

@@ -23,6 +23,7 @@ import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/features/theme/ThemeProvider';
 import type { AppColors } from '@/lib/theme';
 import * as ImagePicker from 'expo-image-picker';
+import AppearanceSheet from '@/components/AppearanceSheet';
 
 export default function ProfileScreen() {
   const { colors, preference, setPreference } = useTheme();
@@ -47,6 +48,7 @@ export default function ProfileScreen() {
   );
   const photoOpen = useRef(false);
   const photosAllowed = useRef<boolean | null>(null);
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
 
   useEffect(() => {
     void phoneAlertsPreference().then(setAlerts);
@@ -272,6 +274,7 @@ export default function ProfileScreen() {
 
           <Button title="Availability" onPress={() => router.push('/availability')} secondary />
           <Button title="Notices" onPress={() => router.push('/notifications')} secondary />
+          <Button title="Appearance & Accessibility" onPress={() => setAppearanceOpen(true)} secondary/>
 
           <Card style={{ marginTop: 16 }}>
             <Text style={styles.section}>Phone alerts</Text>
@@ -322,6 +325,11 @@ export default function ProfileScreen() {
           />
         </ScrollView>
       </Page>
+
+      <AppearanceSheet
+        visible={appearanceOpen}
+        onClose={() => setAppearanceOpen(false)}
+      />
     </SafeAreaView>
   );
 }
