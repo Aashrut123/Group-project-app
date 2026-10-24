@@ -85,7 +85,7 @@ export default function GroupDetailScreen() {
   const styles = createStyles(colors);
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
-  const { tasks: sharedTasks } = useWorkspace();
+  const { tasks: sharedTasks, refresh } = useWorkspace();
 
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<Membership[]>([]);
@@ -261,7 +261,9 @@ export default function GroupDetailScreen() {
 
   const projectTasks = tasks.map((task) => {
     const live = sharedTasks.find((item) => item.id === task.id);
-    return live ? { ...task, ...live } : task;
+    if (!live) return task;
+    const updated = (live as Task & { updated_at?: string }).updated_at;
+    return { ...task, status: live.status, ...(updated ? { updated_at: updated } : {}) };
   });
 
   const myRole = members.find(
@@ -347,6 +349,7 @@ export default function GroupDetailScreen() {
       return;
     }
     setTasks((current) => current.map((task) => (task.id === taskId ? { ...task, milestone_id: milestoneId } : task)));
+    await refresh();
   };
 
   const invite = async () => {
