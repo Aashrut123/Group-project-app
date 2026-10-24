@@ -168,7 +168,7 @@ export function colorsFromPalette(palette: AppearancePalette): AppColors {
     primaryForeground: palette.accentText,
     accent: palette.accent,
     onAccent: palette.accentText,
-    mint: dark ? palette.card : palette.border,
+    mint: palette.card,
     onMint: palette.text,
     forest: palette.text,
     forestFill: palette.card,

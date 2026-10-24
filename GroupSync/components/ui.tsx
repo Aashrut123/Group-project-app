@@ -161,9 +161,9 @@ export function Button({
   const background = onForest
     ? secondary
       ? 'transparent'
-      : colors.accent
+      : colors.primary
     : secondary
-      ? colors.mint
+      ? colors.surface
       : light
         ? colors.elevated
         : colors.primary;
@@ -180,14 +180,14 @@ export function Button({
 
   const labelColor = onForest
     ? secondary
-      ? colors.accent
-      : colors.onAccent
+      ? colors.primary
+      : colors.primaryForeground
     : secondary || light
-      ? colors.onMint
+      ? colors.text
       : colors.primaryForeground;
 
-  const borderWidth = onForest && secondary ? 1 : light ? 1 : 0;
-  const borderColor = onForest && secondary ? colors.accent : colors.border;
+  const borderWidth = secondary || light ? 1 : 0;
+  const borderColor = onForest && secondary ? colors.primary : colors.border;
 
   return (
     <Pressable
