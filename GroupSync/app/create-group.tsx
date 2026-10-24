@@ -7,6 +7,7 @@ import { Button, Chip, EmptyState, ErrorText, Field, Page, SelectCard, TextButto
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useTheme } from '@/features/theme/ThemeProvider';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { saveInviteCode } from '@/lib/inviteCodes';
 import { formatDay } from '@/lib/planner/dates';
 import { easeLayout, usePrefersReducedMotion } from '@/lib/motion';
 import type { AppColors } from '@/lib/theme';
@@ -212,6 +213,7 @@ export default function CreateGroupScreen() {
         codes.push(invite.data);
       }
     }
+    if (codes.length) await saveInviteCode(projectId, codes.join('\n'), 1);
 
     const failedTasks: string[] = [];
     for (const task of plannedTasks) {

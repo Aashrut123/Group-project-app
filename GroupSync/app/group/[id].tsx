@@ -27,6 +27,7 @@ import {
 } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { formatDate, formatTime } from '@/lib/format';
+import { clearInviteCode, loadInviteCode, saveInviteCode } from '@/lib/inviteCodes';
 import { easeLayout, usePrefersReducedMotion } from '@/lib/motion';
 import { formatDay, parseDay } from '@/lib/planner/dates';
 import { usePullRefresh } from '@/hooks/usePullRefresh';
@@ -235,6 +236,23 @@ export default function GroupDetailScreen() {
     };
   }, [id, load]);
 
+  useEffect(() => {
+    if (!id || loading) return;
+    let active = true;
+    void loadInviteCode(String(id)).then((saved) => {
+      if (!active || !saved) return;
+      if (members.length > saved.members) {
+        setInviteCode('');
+        void clearInviteCode(String(id));
+        return;
+      }
+      setInviteCode(saved.code);
+    });
+    return () => {
+      active = false;
+    };
+  }, [id, loading, members.length]);
+
   const { refreshControl } = usePullRefresh(load);
 
   if (loading) {
@@ -243,7 +261,7 @@ export default function GroupDetailScreen() {
 
   const projectTasks = tasks.map((task) => {
     const live = sharedTasks.find((item) => item.id === task.id);
-    return live ? { ...task, status: live.status } : task;
+    return live ? { ...task, ...live } : task;
   });
 
   const myRole = members.find(
@@ -260,6 +278,8 @@ export default function GroupDetailScreen() {
     taskFilter === 'all' ? true : taskFilter === 'done' ? task.status === 'completed' : task.status !== 'completed'
   ));
   const memberLabel = (userId: string | null) => members.find((member) => member.user_id === userId)?.profile?.display_name || 'Teammate';
+  const today = localDayStamp(new Date());
+  const todayLines = todayLinesFor(projectTasks, logs, today);
 
   const saveProject = async () => {
     setBusy(true);
@@ -346,7 +366,9 @@ export default function GroupDetailScreen() {
     if (issue) {
       setError(issue.message);
     } else {
-      setInviteCode(data as string);
+      const code = String(data ?? '');
+      setInviteCode(code);
+      if (code) await saveInviteCode(String(id), code, members.length);
     }
   };
 
@@ -506,6 +528,13 @@ export default function GroupDetailScreen() {
         ) : (
           <ProgressBar value={progress} color={group?.color || colors.primary} label={`${progress}% of ${projectTasks.length} tasks finished · ${openTasks.length} still open${overdueTasks.length ? ` · ${overdueTasks.length} overdue` : ''}`} />
         )}
+        <Text style={styles.subhead}>Today</Text>
+        {todayLines.length ? todayLines.map((line) => (
+          <Text key={line.id} style={styles.metaLine}>{line.text}</Text>
+        )) : (
+          <Text style={styles.metaLine}>No one has posted today.</Text>
+        )}
+        <Button title="Post an update" onPress={() => router.push({ pathname: '/progress', params: { groupId: id } })} secondary />
         <View style={styles.section}>
           <Text style={styles.heading}>People <Text style={styles.count}>{members.length}</Text></Text>
         </View>
@@ -562,8 +591,9 @@ export default function GroupDetailScreen() {
             </Text>
 
             <Text style={styles.muted}>
-              Create a single-use code that expires in
-              14 days.
+              {inviteCode
+                ? 'This code stays here until someone joins. It works once and expires in 14 days.'
+                : 'Create a single-use code that expires in 14 days.'}
             </Text>
 
             <Button
@@ -867,6 +897,41 @@ export default function GroupDetailScreen() {
       </ScrollView>
     </Page>
   );
+}
+
+function localDayStamp(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function onLocalDay(value: string | null | undefined, stamp: string) {
+  if (!value) return false;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value === stamp;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  return localDayStamp(date) === stamp;
+}
+
+function todayLinesFor(tasks: Task[], logs: ProgressLog[], stamp: string) {
+  const lines: { id: string; text: string }[] = [];
+  const seen = new Set<string>();
+  for (const task of tasks) {
+    const updated = (task as Task & { updated_at?: string }).updated_at;
+    if (task.status !== 'completed' || !onLocalDay(updated, stamp)) continue;
+    const who = assigneeLabel(task);
+    const person = who === 'Unassigned' ? 'Someone' : who;
+    if (seen.has(person)) continue;
+    seen.add(person);
+    lines.push({ id: `done-${task.id}`, text: `${person} finished ${task.title}` });
+  }
+  for (const log of logs) {
+    if (!onLocalDay(log.log_date, stamp)) continue;
+    const person = log.profile?.display_name || 'Teammate';
+    if (seen.has(person)) continue;
+    seen.add(person);
+    lines.push({ id: `log-${log.id}`, text: `${person} · ${log.accomplishments}` });
+  }
+  return lines;
 }
 
 function assigneeLabel(task: Task) {

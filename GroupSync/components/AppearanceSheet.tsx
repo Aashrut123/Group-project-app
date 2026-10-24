@@ -53,7 +53,7 @@ export default function AppearanceSheet({
         />
 
         <SafeAreaView style={[styles.sheet, { backgroundColor: palette.card }]} edges={['bottom']}>
-          <View style={styles.handle} />
+                    <View style={[styles.handle, { backgroundColor: palette.border }]} />
 
           <View style={styles.header}>
             <View style={styles.headerText}>
@@ -106,7 +106,8 @@ export default function AppearanceSheet({
                     accessibilityLabel={`${item.name} theme`}
                     style={[
                       styles.themeOption,
-                      selected && styles.selectedTheme,
+                      { borderColor: palette.border },
+                      selected && { borderColor: palette.accent },
                     ]}
                   >
                     <View
@@ -154,15 +155,15 @@ export default function AppearanceSheet({
                       <Text
                         style={[
                           styles.themeName,
+                          { color: palette.text },
                           largeText && styles.largeText,
-                          highContrast && styles.highContrastText,
                         ]}
                       >
                         {item.name}
                       </Text>
 
                       {selected && (
-                        <Text style={[styles.checkmark, { color: palette.muted }]}>
+                        <Text style={[styles.checkmark, { color: palette.accent }]}>
                             ✓
                         </Text>
                       )}
@@ -176,13 +177,13 @@ export default function AppearanceSheet({
                 ACCESSIBILITY
             </Text>
 
-            <View style={styles.settingRow}>
+            <View style={[styles.settingRow, { borderBottomColor: palette.border }]}>
               <View style={styles.settingInfo}>
                 <Text
                   style={[
                     styles.settingTitle,
+                    { color: palette.text },
                     largeText && styles.largeText,
-                    highContrast && styles.highContrastText,
                   ]}
                 >
                   Larger text
@@ -191,8 +192,8 @@ export default function AppearanceSheet({
                 <Text
                   style={[
                     styles.settingDescription,
+                    { color: palette.muted },
                     largeText && styles.largeDescription,
-                    highContrast && styles.highContrastDescription,
                   ]}
                 >
                   Make interface text easier to read.
@@ -203,16 +204,17 @@ export default function AppearanceSheet({
                 value={largeText}
                 onValueChange={setLargeText}
                 accessibilityLabel="Larger text"
+                trackColor={{ false: palette.border, true: palette.accent }}
               />
             </View>
 
-            <View style={styles.settingRow}>
+            <View style={[styles.settingRow, { borderBottomColor: palette.border }]}>
               <View style={styles.settingInfo}>
                 <Text
                   style={[
                     styles.settingTitle,
+                    { color: palette.text },
                     largeText && styles.largeText,
-                    highContrast && styles.highContrastText,
                   ]}
                 >
                   High contrast
@@ -221,8 +223,8 @@ export default function AppearanceSheet({
                 <Text
                   style={[
                     styles.settingDescription,
+                    { color: palette.muted },
                     largeText && styles.largeDescription,
-                    highContrast && styles.highContrastDescription,
                   ]}
                 >
                   Improve text and element visibility.
@@ -233,16 +235,17 @@ export default function AppearanceSheet({
                 value={highContrast}
                 onValueChange={setHighContrast}
                 accessibilityLabel="High contrast"
+                trackColor={{ false: palette.border, true: palette.accent }}
               />
             </View>
 
-            <View style={styles.settingRow}>
+            <View style={[styles.settingRow, { borderBottomColor: palette.border }]}>
               <View style={styles.settingInfo}>
                 <Text
                   style={[
                     styles.settingTitle,
+                    { color: palette.text },
                     largeText && styles.largeText,
-                    highContrast && styles.highContrastText,
                   ]}
                 >
                   Reduced motion
@@ -251,8 +254,8 @@ export default function AppearanceSheet({
                 <Text
                   style={[
                     styles.settingDescription,
+                    { color: palette.muted },
                     largeText && styles.largeDescription,
-                    highContrast && styles.highContrastDescription,
                   ]}
                 >
                   Turn off the panel slide animation.
@@ -263,6 +266,7 @@ export default function AppearanceSheet({
                 value={reducedMotion}
                 onValueChange={setReducedMotion}
                 accessibilityLabel="Reduced motion"
+                trackColor={{ false: palette.border, true: palette.accent }}
               />
             </View>
 
