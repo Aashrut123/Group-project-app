@@ -40,6 +40,28 @@ function createLabel(method: StartMethod, taskCount: number, busy: boolean) {
   return 'Create blank project';
 }
 
+function permissionMessage(message: string) {
+  if (/row-level security/i.test(message)) {
+    return 'The project was not created. Sign out, sign in again, and try once more. Your name, deadline, and tasks are still on this screen.';
+  }
+  return message;
+}
+
+async function insertProject(row: Record<string, string | null>) {
+  const inserted = await supabase.from('groups').insert(row);
+  if (inserted.error) return { id: null as string | null, error: inserted.error };
+  const found = await supabase
+    .from('groups')
+    .select('id')
+    .eq('created_by', row.created_by)
+    .eq('name', row.name)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (found.error) return { id: null, error: found.error };
+  return { id: found.data?.id ?? null, error: null };
+}
+
 export default function CreateGroupScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
@@ -144,10 +166,17 @@ export default function CreateGroupScreen() {
     setBusy(true);
     setError('');
 
+    if (!user) {
+      saving.current = false;
+      setBusy(false);
+      setError('Sign in again before creating a project.');
+      return;
+    }
     const payload = {
       name: trimmed,
       description: description.trim(),
       color,
+      created_by: user.id,
       outcome: outcome.trim(),
       deadline: deadline ? formatDay(deadline) : null,
       starts_on: formatDay(new Date()),
@@ -155,28 +184,28 @@ export default function CreateGroupScreen() {
       status: 'active',
     };
     const warnings: string[] = [];
-    let { data: created, error: issue } = await supabase.from('groups').insert(payload).select('id').single();
-    if (issue && /outcome|deadline|starts_on|priority|status/.test(issue.message)) {
-      const fallback = await supabase.from('groups').insert({
+    let created = await insertProject(payload);
+    if (created.error && /outcome|deadline|starts_on|priority|status/.test(created.error.message)) {
+      created = await insertProject({
         name: payload.name,
         description: payload.description,
         color,
-      }).select('id').single();
-      created = fallback.data;
-      issue = fallback.error;
-      if (!issue) warnings.push('The project was created. Apply the latest database migration to store the deadline.');
+        created_by: user.id,
+      });
+      if (!created.error) warnings.push('The project was created. Apply the latest database migration to store the deadline.');
     }
 
-    if (issue || !created) {
+    if (created.error || !created.id) {
       saving.current = false;
       setBusy(false);
-      setError(issue?.message || 'Could not create the project.');
+      setError(created.error ? permissionMessage(created.error.message) : 'The project was saved, but it could not be opened. Pull to refresh on Projects.');
       return;
     }
+    const projectId = created.id;
 
     const codes: string[] = [];
     for (const [index] of invites.entries()) {
-      const invite = await supabase.rpc('create_group_invitation', { target_group_id: created.id, valid_days: 14 });
+      const invite = await supabase.rpc('create_group_invitation', { target_group_id: projectId, valid_days: 14 });
       if (invite.error || typeof invite.data !== 'string' || !invite.data) {
         warnings.push(`Invitation ${index + 1} was not created: ${invite.error?.message || 'no code was returned'}.`);
       } else {
@@ -185,35 +214,22 @@ export default function CreateGroupScreen() {
     }
 
     const failedTasks: string[] = [];
-    const assignedIds: string[] = [];
     for (const task of plannedTasks) {
       const inserted = await supabase.from('tasks').insert({
-        group_id: created.id,
+        group_id: projectId,
         title: task.title,
         description: '',
         due_at: task.due ? task.due.toISOString() : null,
         priority: task.priority,
       }).select('id').single();
-      if (inserted.error || !inserted.data) {
-        failedTasks.push(task.title);
-      } else if (user) {
-        assignedIds.push(inserted.data.id);
-      }
+      if (inserted.error || !inserted.data) failedTasks.push(task.title);
     }
-    if (failedTasks.length) {
-      warnings.push(`These tasks were not saved: ${failedTasks.join(', ')}.`);
-    }
-    if (assignedIds.length && user) {
-      const assignment = await supabase.from('task_assignments').insert(
-        assignedIds.map((taskId) => ({ task_id: taskId, user_id: user.id })),
-      );
-      if (assignment.error) warnings.push(`The tasks were saved, but assigning them to you failed: ${assignment.error.message}`);
-    }
+    if (failedTasks.length) warnings.push(`These tasks were not saved: ${failedTasks.join(', ')}.`);
 
     await refresh();
     setBusy(false);
 
-    const open = () => router.replace(`/group/${created.id}`);
+    const open = () => router.replace(`/group/${projectId}`);
     const detail = [
       codes.length ? `Invitation ${codes.length === 1 ? 'code' : 'codes'}: ${codes.join(', ')}. Each code works once, expires in 14 days, and is not emailed.` : '',
       ...warnings,
