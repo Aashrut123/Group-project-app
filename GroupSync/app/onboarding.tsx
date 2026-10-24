@@ -9,6 +9,7 @@ import { GOAL_PRESETS, PLANNING_STYLES, goalSummary, type PlanningStyle } from '
 import { easeLayout, usePrefersReducedMotion } from '@/lib/motion';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type StartPath = 'start' | 'join' | 'explore';
 
@@ -180,164 +181,166 @@ export default function OnboardingScreen() {
   }
 
   return (
-    <Page>
-      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
-        <View style={styles.progress}>
-          {steps.map((value) => (
-            <View key={value} style={[styles.bar, value <= step && styles.barOn]} />
-          ))}
-        </View>
-        <Text style={styles.step}>Step {progress + 1} of {steps.length}</Text>
-
-        {step === 0 ? (
-          <>
-            <Text style={styles.title}>Big goals. Clear next steps.</Text>
-            <Text style={styles.body}>
-              Turn an idea into a plan, see what to do next, and keep a record of what actually got done. Start alone and invite people when you want them.
-            </Text>
-            <View style={[styles.features, wide && styles.featuresWide]}>
-              {FEATURES.map((feature) => (
-                <View key={feature.title} style={[styles.feature, wide && styles.featureWide]}>
-                  <Text style={styles.featureTitle}>{feature.title}</Text>
-                  <Text style={styles.note}>{feature.body}</Text>
-                </View>
-              ))}
-            </View>
-            <Text style={styles.exampleLabel}>Example, not your data</Text>
-            <Card>
-              <Text style={styles.previewKicker}>Ship the demo</Text>
-              <Text style={styles.note}>Working version · 1 of 2 tasks finished</Text>
-              <ProgressBar value={50} label="Halfway through the milestone" />
-              <View style={styles.previewTaskRow}>
-                <Text style={styles.previewDone}>✓</Text>
-                <Text style={styles.previewDoneText}>Compare the core flow</Text>
-              </View>
-              <View style={styles.previewTaskRow}>
-                <Text style={styles.previewOpen}>○</Text>
-                <Text style={styles.previewTask}>Record a two-minute walkthrough</Text>
-              </View>
-              <View style={styles.previewPill}>
-                <Pill tone="active">Next · Record a two-minute walkthrough</Pill>
-              </View>
-            </Card>
-            <Text style={styles.note}>
-              The built-in planner can draft a schedule for you to review. A remote AI planner is used only when it is configured.
-            </Text>
-            <Button title="Get started" onPress={() => goTo(1)} />
-          </>
-        ) : null}
-
-        {step === 1 ? (
-          <>
-            <Text style={styles.title}>What do you want to get done?</Text>
-            <Text style={styles.body}>
-              Pick one or more. These shape suggested milestones. They do not hide the rest of GroupSync, and you can change them from Profile.
-            </Text>
-            <View style={styles.choices}>
-              {GOAL_PRESETS.map((goal) => (
-                <Chip key={goal.id} label={goal.label} active={goals.includes(goal.id)} onPress={() => toggleGoal(goal.id)} />
-              ))}
-            </View>
-            {goals.length >= 8 ? <Text style={styles.note}>You can save up to 8 goals.</Text> : null}
-            {goals.map((id) => {
-              const goal = GOAL_PRESETS.find((item) => item.id === id);
-              return goal ? <Text key={id} style={styles.note}>{goal.label}: {goal.detail}</Text> : null;
-            })}
-            <Field
-              label="Something else"
-              value={customGoal}
-              onChangeText={setCustomGoal}
-              placeholder="Optional"
-              maxLength={200}
-            />
-            {error ? <ErrorText>{error}</ErrorText> : null}
-            <Button title="Continue" onPress={() => { setError(''); goTo(editing ? 3 : 2); }} />
-            {editing ? null : <Button title="Skip for now" onPress={() => { setError(''); goTo(2); }} secondary />}
-            {editing ? null : <TextButton title="Back" onPress={() => goTo(0)} />}
-          </>
-        ) : null}
-
-        {step === 2 ? (
-          <>
-            <Text style={styles.title}>How do you want to start?</Text>
-            <Text style={styles.body}>Pick one. You can create or join a project later if you explore first.</Text>
-            {PATHS.map((item) => (
-              <SelectCard
-                key={item.id}
-                title={item.title}
-                detail={item.detail}
-                selected={path === item.id}
-                onPress={() => {
-                  easeLayout(reduceMotion);
-                  setPath(item.id);
-                  setError('');
-                }}
-              />
+    <SafeAreaView>
+      <Page>
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
+          <View style={styles.progress}>
+            {steps.map((value) => (
+              <View key={value} style={[styles.bar, value <= step && styles.barOn]} />
             ))}
-            {path === 'start' ? (
-              <>
-                <Field label="Project name" value={projectName} onChangeText={setProjectName} placeholder="e.g. Competition robot" maxLength={70} />
-                <Field label="What does done look like?" value={projectOutcome} onChangeText={setProjectOutcome} placeholder="Optional" multiline />
-              </>
-            ) : null}
-            {path === 'join' ? (
-              <Field label="Invitation code" value={code} onChangeText={setCode} placeholder="Paste the code" autoCapitalize="none" />
-            ) : null}
-            {error ? <ErrorText>{error}</ErrorText> : null}
-            <Button title="Continue" onPress={() => {
-              if (path === 'start' && !projectName.trim()) {
-                setError('Add a project name, or choose Explore first.');
-                return;
-              }
-              if (path === 'join' && !code.trim()) {
-                setError('Enter an invitation code, or choose another start.');
-                return;
-              }
-              setError('');
-              goTo(3);
-            }} />
-            <TextButton title="Back" onPress={() => goTo(1)} />
-          </>
-        ) : null}
+          </View>
+          <Text style={styles.step}>Step {progress + 1} of {steps.length}</Text>
 
-        {step === 3 ? (
-          <>
-            <Text style={styles.title}>{editing ? 'Your goals' : 'Review and finish'}</Text>
-            <Text style={styles.body}>
-              {editing
-                ? 'These goals and this pace stay on your profile. They suggest milestones and how the built-in planner spaces work.'
-                : 'Nothing is created until you finish. A new project is confirmed on the next screen.'}
-            </Text>
-            <Card>
-              <Text style={styles.featureTitle}>Goals</Text>
-              <Text style={styles.note}>{goalSummary(goals, customGoal) || 'No goal selected. You can add one later.'}</Text>
-              <Button title="Edit goals" onPress={() => goTo(1)} secondary />
-            </Card>
-            {editing ? null : (
+          {step === 0 ? (
+            <>
+              <Text style={styles.title}>Big goals. Clear next steps.</Text>
+              <Text style={styles.body}>
+                Turn an idea into a plan, see what to do next, and keep a record of what actually got done. Start alone and invite people when you want them.
+              </Text>
+              <View style={[styles.features, wide && styles.featuresWide]}>
+                {FEATURES.map((feature) => (
+                  <View key={feature.title} style={[styles.feature, wide && styles.featureWide]}>
+                    <Text style={styles.featureTitle}>{feature.title}</Text>
+                    <Text style={styles.note}>{feature.body}</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={styles.exampleLabel}>Example, not your data</Text>
               <Card>
-                <Text style={styles.featureTitle}>Start</Text>
-                <Text style={styles.note}>
-                  {path === 'start' ? `New project: ${projectName.trim() || 'Unnamed'}${projectOutcome.trim() ? `. ${projectOutcome.trim()}` : ''}` : null}
-                  {path === 'join' ? `Join with code ${code.trim() || '(missing)'}` : null}
-                  {path === 'explore' ? 'Explore Home first. No project is created.' : null}
-                </Text>
-                <Button title="Change start" onPress={() => goTo(2)} secondary />
+                <Text style={styles.previewKicker}>Ship the demo</Text>
+                <Text style={styles.note}>Working version · 1 of 2 tasks finished</Text>
+                <ProgressBar value={50} label="Halfway through the milestone" />
+                <View style={styles.previewTaskRow}>
+                  <Text style={styles.previewDone}>✓</Text>
+                  <Text style={styles.previewDoneText}>Compare the core flow</Text>
+                </View>
+                <View style={styles.previewTaskRow}>
+                  <Text style={styles.previewOpen}>○</Text>
+                  <Text style={styles.previewTask}>Record a two-minute walkthrough</Text>
+                </View>
+                <View style={styles.previewPill}>
+                  <Pill tone="active">Next · Record a two-minute walkthrough</Pill>
+                </View>
               </Card>
-            )}
-            <Text style={styles.section}>Planning pace</Text>
-            <Text style={styles.note}>Optional. Steady spreads work evenly. Sprint pulls dates forward. Flexible keeps a longer buffer.</Text>
-            <View style={styles.choices}>
-              {PLANNING_STYLES.map((item) => (
-                <Chip key={item.id} label={item.label} active={style === item.id} onPress={() => setStyle(item.id)} />
+              <Text style={styles.note}>
+                The built-in planner can draft a schedule for you to review. A remote AI planner is used only when it is configured.
+              </Text>
+              <Button title="Get started" onPress={() => goTo(1)} />
+            </>
+          ) : null}
+
+          {step === 1 ? (
+            <>
+              <Text style={styles.title}>What do you want to get done?</Text>
+              <Text style={styles.body}>
+                Pick one or more. These shape suggested milestones. They do not hide the rest of GroupSync, and you can change them from Profile.
+              </Text>
+              <View style={styles.choices}>
+                {GOAL_PRESETS.map((goal) => (
+                  <Chip key={goal.id} label={goal.label} active={goals.includes(goal.id)} onPress={() => toggleGoal(goal.id)} />
+                ))}
+              </View>
+              {goals.length >= 8 ? <Text style={styles.note}>You can save up to 8 goals.</Text> : null}
+              {goals.map((id) => {
+                const goal = GOAL_PRESETS.find((item) => item.id === id);
+                return goal ? <Text key={id} style={styles.note}>{goal.label}: {goal.detail}</Text> : null;
+              })}
+              <Field
+                label="Something else"
+                value={customGoal}
+                onChangeText={setCustomGoal}
+                placeholder="Optional"
+                maxLength={200}
+              />
+              {error ? <ErrorText>{error}</ErrorText> : null}
+              <Button title="Continue" onPress={() => { setError(''); goTo(editing ? 3 : 2); }} />
+              {editing ? null : <Button title="Skip for now" onPress={() => { setError(''); goTo(2); }} secondary />}
+              {editing ? null : <TextButton title="Back" onPress={() => goTo(0)} />}
+            </>
+          ) : null}
+
+          {step === 2 ? (
+            <>
+              <Text style={styles.title}>How do you want to start?</Text>
+              <Text style={styles.body}>Pick one. You can create or join a project later if you explore first.</Text>
+              {PATHS.map((item) => (
+                <SelectCard
+                  key={item.id}
+                  title={item.title}
+                  detail={item.detail}
+                  selected={path === item.id}
+                  onPress={() => {
+                    easeLayout(reduceMotion);
+                    setPath(item.id);
+                    setError('');
+                  }}
+                />
               ))}
-            </View>
-            {error ? <ErrorText>{error}</ErrorText> : null}
-            <Button title={editing ? 'Save goals' : 'Finish'} onPress={() => void finish()} busy={busy} />
-            <TextButton title="Back" onPress={() => goTo(editing ? 1 : 2)} />
-          </>
-        ) : null}
-      </ScrollView>
-    </Page>
+              {path === 'start' ? (
+                <>
+                  <Field label="Project name" value={projectName} onChangeText={setProjectName} placeholder="e.g. Competition robot" maxLength={70} />
+                  <Field label="What does done look like?" value={projectOutcome} onChangeText={setProjectOutcome} placeholder="Optional" multiline />
+                </>
+              ) : null}
+              {path === 'join' ? (
+                <Field label="Invitation code" value={code} onChangeText={setCode} placeholder="Paste the code" autoCapitalize="none" />
+              ) : null}
+              {error ? <ErrorText>{error}</ErrorText> : null}
+              <Button title="Continue" onPress={() => {
+                if (path === 'start' && !projectName.trim()) {
+                  setError('Add a project name, or choose Explore first.');
+                  return;
+                }
+                if (path === 'join' && !code.trim()) {
+                  setError('Enter an invitation code, or choose another start.');
+                  return;
+                }
+                setError('');
+                goTo(3);
+              }} />
+              <TextButton title="Back" onPress={() => goTo(1)} />
+            </>
+          ) : null}
+
+          {step === 3 ? (
+            <>
+              <Text style={styles.title}>{editing ? 'Your goals' : 'Review and finish'}</Text>
+              <Text style={styles.body}>
+                {editing
+                  ? 'These goals and this pace stay on your profile. They suggest milestones and how the built-in planner spaces work.'
+                  : 'Nothing is created until you finish. A new project is confirmed on the next screen.'}
+              </Text>
+              <Card>
+                <Text style={styles.featureTitle}>Goals</Text>
+                <Text style={styles.note}>{goalSummary(goals, customGoal) || 'No goal selected. You can add one later.'}</Text>
+                <Button title="Edit goals" onPress={() => goTo(1)} secondary />
+              </Card>
+              {editing ? null : (
+                <Card>
+                  <Text style={styles.featureTitle}>Start</Text>
+                  <Text style={styles.note}>
+                    {path === 'start' ? `New project: ${projectName.trim() || 'Unnamed'}${projectOutcome.trim() ? `. ${projectOutcome.trim()}` : ''}` : null}
+                    {path === 'join' ? `Join with code ${code.trim() || '(missing)'}` : null}
+                    {path === 'explore' ? 'Explore Home first. No project is created.' : null}
+                  </Text>
+                  <Button title="Change start" onPress={() => goTo(2)} secondary />
+                </Card>
+              )}
+              <Text style={styles.section}>Planning pace</Text>
+              <Text style={styles.note}>Optional. Steady spreads work evenly. Sprint pulls dates forward. Flexible keeps a longer buffer.</Text>
+              <View style={styles.choices}>
+                {PLANNING_STYLES.map((item) => (
+                  <Chip key={item.id} label={item.label} active={style === item.id} onPress={() => setStyle(item.id)} />
+                ))}
+              </View>
+              {error ? <ErrorText>{error}</ErrorText> : null}
+              <Button title={editing ? 'Save goals' : 'Finish'} onPress={() => void finish()} busy={busy} />
+              <TextButton title="Back" onPress={() => goTo(editing ? 1 : 2)} />
+            </>
+          ) : null}
+        </ScrollView>
+      </Page>
+    </SafeAreaView>
   );
 }
 
