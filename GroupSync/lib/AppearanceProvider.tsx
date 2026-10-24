@@ -12,6 +12,26 @@ import {
 export const APPEARANCE_THEMES = {
   Light: {
     name: 'Light',
+    background: '#F5F6F2',
+    card: '#FFFFFF',
+    text: '#192C25',
+    muted: '#66736B',
+    accent: '#26745A',
+    accentText: '#FFFFFF',
+    border: '#D5DED6',
+  },
+  Dark: {
+    name: 'Dark',
+    background: '#111A17',
+    card: '#1B2822',
+    text: '#F0F5F1',
+    muted: '#A8B9AE',
+    accent: '#3D9A78',
+    accentText: '#062016',
+    border: '#2C3D34',
+  },
+  Orange: {
+    name: 'Orange',
     background: '#FAFAF7',
     card: '#F3EFEA',
     text: '#2B2625',
@@ -19,16 +39,6 @@ export const APPEARANCE_THEMES = {
     accent: '#C85A32',
     accentText: '#FFFFFF',
     border: '#E6DFD5',
-  },
-  Dark: {
-    name: 'Dark',
-    background: '#1B2430',
-    card: '#273244',
-    text: '#F0F4F8',
-    muted: '#8C9DAE',
-    accent: '#38BDF8',
-    accentText: '#0F172A',
-    border: '#334155',
   },
   Ocean: {
     name: 'Ocean',

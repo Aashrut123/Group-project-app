@@ -149,6 +149,13 @@ export function isDarkColor(hex: string): boolean {
   return red * 0.299 + green * 0.587 + blue * 0.114 < 150;
 }
 
+/** Light and Dark use the original green palettes. The other themes use the palette as chosen. */
+export function colorsForAppearance(themeName: string, palette: AppearancePalette): AppColors {
+  if (themeName === 'Light') return lightColors;
+  if (themeName === 'Dark') return darkColors;
+  return colorsFromPalette(palette);
+}
+
 /** Map the chosen appearance palette onto the colors the screens already use. */
 export function colorsFromPalette(palette: AppearancePalette): AppColors {
   const dark = isDarkColor(palette.background);

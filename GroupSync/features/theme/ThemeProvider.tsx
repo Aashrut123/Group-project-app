@@ -3,7 +3,7 @@ import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useOptionalAppearance } from '@/lib/AppearanceProvider';
-import { colorsFromPalette, darkColors, isDarkColor, lightColors, radius, space, type, type AppColors } from '@/lib/theme';
+import { colorsForAppearance, darkColors, isDarkColor, lightColors, radius, space, type, type AppColors } from '@/lib/theme';
 
 export type ColorSchemePreference = 'system' | 'light' | 'dark';
 
@@ -67,7 +67,7 @@ export function useTheme(): ThemeValue {
   if (!appearance) return base;
   return {
     ...base,
-    colors: colorsFromPalette(appearance.palette),
+    colors: colorsForAppearance(appearance.themeName, appearance.palette),
     scheme: isDarkColor(appearance.palette.background) ? 'dark' : 'light',
   };
 }
