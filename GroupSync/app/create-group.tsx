@@ -24,7 +24,6 @@ type DraftTask = {
   title: string;
   priority: TaskPriority;
   due: Date | null;
-  assignToMe: boolean;
 };
 
 type PendingInvite = { key: string };
@@ -62,7 +61,6 @@ export default function CreateGroupScreen() {
   const [draftTitle, setDraftTitle] = useState('');
   const [draftPriority, setDraftPriority] = useState<TaskPriority>('medium');
   const [draftDue, setDraftDue] = useState<Date | null>(null);
-  const [draftAssign, setDraftAssign] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [planNote, setPlanNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -115,7 +113,6 @@ export default function CreateGroupScreen() {
       title,
       priority: draftPriority,
       due: draftDue,
-      assignToMe: draftAssign,
     };
     setTasks((current) => {
       if (!editingKey) return [...current, next];
@@ -124,7 +121,6 @@ export default function CreateGroupScreen() {
     setDraftTitle('');
     setDraftPriority('medium');
     setDraftDue(null);
-    setDraftAssign(false);
     setEditingKey(null);
   };
 
@@ -133,7 +129,6 @@ export default function CreateGroupScreen() {
     setDraftTitle(task.title);
     setDraftPriority(task.priority);
     setDraftDue(task.due);
-    setDraftAssign(task.assignToMe);
     setError('');
   };
 
@@ -201,7 +196,7 @@ export default function CreateGroupScreen() {
       }).select('id').single();
       if (inserted.error || !inserted.data) {
         failedTasks.push(task.title);
-      } else if (task.assignToMe && user) {
+      } else if (user) {
         assignedIds.push(inserted.data.id);
       }
     }
@@ -338,11 +333,10 @@ export default function CreateGroupScreen() {
                     {PRIORITIES.map((priority) => (
                       <Chip key={priority} label={priority} active={draftPriority === priority} onPress={() => setDraftPriority(priority)} />
                     ))}
-                    <Chip label="Assign to me" active={draftAssign} onPress={() => setDraftAssign((current) => !current)} />
                   </View>
                   <DateField label="Due date" value={draftDue} onChange={setDraftDue} />
                   <Button title={editingKey ? 'Save task' : 'Add task'} onPress={saveDraft} secondary />
-                  {editingKey ? <TextButton title="Cancel edit" onPress={() => { setEditingKey(null); setDraftTitle(''); setDraftDue(null); setDraftAssign(false); }} /> : null}
+                  {editingKey ? <TextButton title="Cancel edit" onPress={() => { setEditingKey(null); setDraftTitle(''); setDraftDue(null); }} /> : null}
                   {tasks.length ? tasks.map((task) => (
                     <View key={task.key} style={styles.taskRow}>
                       <Pressable accessibilityRole="button" accessibilityLabel={`Edit ${task.title}`} onPress={() => editTask(task)} style={{ flex: 1 }}>
@@ -350,7 +344,6 @@ export default function CreateGroupScreen() {
                         <Text style={styles.meta}>
                           {task.priority}
                           {task.due ? ` · due ${task.due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : ''}
-                          {task.assignToMe ? ' · assigned to you' : ''}
                         </Text>
                       </Pressable>
                       <TextButton title="Remove" onPress={() => setTasks((current) => current.filter((item) => item.key !== task.key))} />
@@ -387,7 +380,7 @@ export default function CreateGroupScreen() {
               <Text style={styles.label}>Tasks that will be created</Text>
               {plannedTasks.length ? plannedTasks.map((task) => (
                 <Text key={task.key} style={styles.meta}>
-                  {task.title} · {task.priority}{task.assignToMe ? ' · you' : ''}
+                  {task.title} · {task.priority}
                 </Text>
               )) : (
                 <Text style={styles.meta}>None. The project will not include starter tasks.</Text>
