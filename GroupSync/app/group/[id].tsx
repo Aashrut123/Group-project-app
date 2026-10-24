@@ -472,17 +472,6 @@ export default function GroupDetailScreen() {
             {group?.deadline ? `Deadline ${formatDate(group.deadline)}` : 'No deadline'}
             {nextMilestone ? ` · Next milestone ${nextMilestone.title}` : ''}
           </Text>
-          <View style={styles.avatars}>
-            {members.slice(0, 5).map((member) => {
-              const name = member.profile?.display_name || 'Teammate';
-              return member.profile?.avatar_url ? (
-                <Image key={member.user_id} source={{ uri: member.profile.avatar_url }} style={styles.avatarImage} />
-              ) : (
-                <View key={member.user_id} style={styles.avatar}><Text style={styles.avatarText}>{name[0]?.toUpperCase() || '?'}</Text></View>
-              );
-            })}
-            <Text style={styles.metaLine}>{members.length} {members.length === 1 ? 'member' : 'members'}</Text>
-          </View>
         </View>
 
         <View style={styles.tabs}>
@@ -979,10 +968,6 @@ function createStyles(colors: AppColors) {
   projectName: { flex: 1, color: colors.text, fontSize: 26, lineHeight: 30, fontWeight: '700', letterSpacing: -0.4 },
   description: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
   metaLine: { color: colors.textSecondary, fontSize: 13, lineHeight: 18 },
-  avatars: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  avatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.mint, alignItems: 'center', justifyContent: 'center' },
-  avatarImage: { width: 28, height: 28, borderRadius: 14 },
-  avatarText: { color: colors.onMint, fontSize: 11, fontWeight: '700' },
   tabs: { flexDirection: 'row', backgroundColor: colors.mutedSurface, borderRadius: 12, padding: 3, marginBottom: 14 },
   tab: { flex: 1, minHeight: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 10, paddingHorizontal: 2 },
   tabOn: { backgroundColor: colors.surface },
