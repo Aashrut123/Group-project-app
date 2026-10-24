@@ -257,9 +257,6 @@ export default function GroupDetailScreen() {
   const now = new Date();
   const overdueTasks = openTasks.filter((task) => task.due_at && new Date(task.due_at) < now);
   const nextTask = [...openTasks].sort((a, b) => (a.due_at || '9999').localeCompare(b.due_at || '9999'))[0];
-  const nextMilestone = [...milestones]
-    .filter((milestone) => !milestone.completed_at)
-    .sort((a, b) => (a.due_on || '9999').localeCompare(b.due_on || '9999'))[0];
   const visibleTasks = projectTasks.filter((task) => (
     taskFilter === 'all' ? true : taskFilter === 'done' ? task.status === 'completed' : task.status !== 'completed'
   ));
@@ -318,15 +315,6 @@ export default function GroupDetailScreen() {
     }
     const second = await supabase.from('milestones').update({ sort_order: index }).eq('id', other.id);
     if (second.error) setError(second.error.message);
-    else await load();
-  };
-
-  const toggleMilestone = async (milestone: Milestone) => {
-    setError('');
-    const { error: issue } = await supabase.from('milestones').update({
-      completed_at: milestone.completed_at ? null : new Date().toISOString(),
-    }).eq('id', milestone.id);
-    if (issue) setError(issue.message);
     else await load();
   };
 
@@ -482,7 +470,6 @@ export default function GroupDetailScreen() {
           {group?.description ? <Text style={styles.description} numberOfLines={2}>{group.description}</Text> : null}
           <Text style={styles.metaLine}>
             {group?.deadline ? `Deadline ${formatDate(group.deadline)}` : 'No deadline'}
-            {nextMilestone ? ` · Next milestone ${nextMilestone.title}` : ''}
           </Text>
         </View>
 
@@ -714,7 +701,6 @@ export default function GroupDetailScreen() {
         {section === 'milestones' ? (
           <>
             <Text style={styles.heading}>Milestones</Text>
-            {nextMilestone ? <Text style={styles.metaLine}>Next up: {nextMilestone.title}{nextMilestone.due_on ? ` · ${formatDate(nextMilestone.due_on)}` : ''}</Text> : null}
             {milestones.length ? milestones.map((milestone, index) => {
               const linked = projectTasks.filter((task) => task.milestone_id === milestone.id);
               const stats = milestoneTaskProgress(linked);
@@ -734,16 +720,13 @@ export default function GroupDetailScreen() {
                   {open ? '▾' : '▸'} {milestone.title}
                 </Text>
                 <Text style={styles.muted}>
-                  {nextMilestone?.id === milestone.id ? 'Next · ' : ''}{milestoneState}
+                  {milestoneState}
                   {' · '}{milestone.due_on ? formatDate(milestone.due_on) : 'No date'}
                   {stats.total ? ` · ${stats.done} of ${stats.total} tasks finished` : ' · no tasks linked yet'}
                 </Text>
                 {stats.total ? <ProgressBar value={stats.percent} color={group?.color || colors.primary} /> : null}
                 {open ? (
                   <>
-                    {stats.total > 0 && stats.done === stats.total && !milestone.completed_at ? (
-                      <Text style={styles.muted}>All linked tasks are finished. Mark the milestone done when you are ready.</Text>
-                    ) : null}
                     {linked.map((task) => (
                       <Text key={task.id} style={styles.link} onPress={() => router.push(`/task/${task.id}`)}>
                         {taskStatusLabel(task.status)} · {task.title}
@@ -764,9 +747,6 @@ export default function GroupDetailScreen() {
                         ))}
                       </View>
                     ) : null}
-                    <Text style={styles.link} onPress={() => void toggleMilestone(milestone)}>
-                      {milestone.completed_at ? 'Mark not done' : 'Mark done'}
-                    </Text>
                     <View style={styles.section}>
                       {index > 0 ? <Text style={styles.link} onPress={() => void moveMilestone(index, -1)}>Move up</Text> : <Text />}
                       {index < milestones.length - 1 ? <Text style={styles.link} onPress={() => void moveMilestone(index, 1)}>Move down</Text> : null}
