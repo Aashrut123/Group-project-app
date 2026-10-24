@@ -182,6 +182,13 @@ export default function CreateTaskScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 28 }}
       >
+        <Field
+          label="Task title"
+          placeholder="What needs to get done?"
+          value={title}
+          onChangeText={setTitle}
+        />
+
         <Text style={styles.label}>Group</Text>
         <Text style={styles.hint}>Optional. Tap a project to attach this task, then tap it again to leave the task personal.</Text>
 
@@ -208,13 +215,6 @@ export default function CreateTaskScreen() {
             </Text>
           ))}
         </Card>
-
-        <Field
-          label="Task title"
-          placeholder="What needs to get done?"
-          value={title}
-          onChangeText={setTitle}
-        />
 
         <Field
           label="Description"

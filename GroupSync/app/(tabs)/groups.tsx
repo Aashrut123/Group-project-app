@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import {
   Button,
@@ -11,7 +12,6 @@ import {
   Loading,
   Page,
   ProgressBar,
-  Title,
 } from '@/components/ui';
 import { usePullRefresh } from '@/hooks/usePullRefresh';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -87,8 +87,21 @@ export default function GroupsScreen() {
           contentContainerStyle={{ paddingBottom: 24 }}
           refreshControl={refreshControl}
         >
-          <Title subtitle="Clubs, teams, and shared deadlines">Projects</Title>
-          <Button title="Create a group" onPress={() => router.push('/create-group')} style={styles.create} />
+          <View style={styles.head}>
+            <View style={styles.headCopy}>
+              <Text style={styles.screenTitle}>Projects</Text>
+              <Text style={styles.subtitle}>Clubs, teams, and shared deadlines</Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Create a group"
+              onPress={() => router.push('/create-group')}
+              hitSlop={8}
+              style={({ pressed }) => [styles.addButton, pressed && styles.addPressed]}
+            >
+              <Ionicons name="add" size={26} color={colors.primaryForeground} />
+            </Pressable>
+          </View>
 
           {error ? <ErrorText>{error}</ErrorText> : null}
 
@@ -150,7 +163,12 @@ export default function GroupsScreen() {
 
 function createStyles(colors: AppColors) {
   return {
-    create: { marginTop: 0, marginBottom: 16 },
+    head: { flexDirection: 'row' as const, alignItems: 'flex-start' as const, justifyContent: 'space-between' as const, gap: 16, marginTop: 4, marginBottom: 18 },
+    headCopy: { flex: 1, paddingTop: 2, paddingRight: 4 },
+    screenTitle: { color: colors.text, fontSize: 30, lineHeight: 34, fontWeight: '700' as const, letterSpacing: -0.7 },
+    subtitle: { color: colors.textSecondary, fontSize: 15, lineHeight: 21, marginTop: 6 },
+    addButton: { width: 44, height: 44, marginTop: 2, borderRadius: 12, alignItems: 'center' as const, justifyContent: 'center' as const, backgroundColor: colors.primary },
+    addPressed: { backgroundColor: colors.primaryPressed },
     group: { backgroundColor: colors.surface, borderRadius: 18, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 12, marginBottom: 10 },
     pressed: { opacity: 0.82 },
     nameRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 },
