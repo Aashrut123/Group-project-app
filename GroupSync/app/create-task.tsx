@@ -28,12 +28,20 @@ import type {
 
 const priorities: TaskPriority[] = ['low', 'medium', 'high'];
 
+function dueOnDay(day: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 17, 0, 0, 0);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export default function CreateTaskScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const { groups, refresh } = useWorkspace();
-  const params = useLocalSearchParams<{ groupId?: string | string[] }>();
+  const params = useLocalSearchParams<{ groupId?: string | string[]; day?: string | string[] }>();
   const openedFrom = Array.isArray(params.groupId) ? params.groupId[0] ?? '' : params.groupId ?? '';
+  const openedDay = Array.isArray(params.day) ? params.day[0] ?? '' : params.day ?? '';
 
   const [groupId, setGroupId] = useState(openedFrom);
   const [members, setMembers] = useState<Membership[]>([]);
@@ -42,7 +50,7 @@ export default function CreateTaskScreen() {
   const [assignees, setAssignees] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [due, setDue] = useState<Date | null>(null);
+  const [due, setDue] = useState<Date | null>(dueOnDay(openedDay));
   const [estimate, setEstimate] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [requirements, setRequirements] = useState('');

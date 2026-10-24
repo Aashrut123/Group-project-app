@@ -21,18 +21,26 @@ import type { EventKind } from '@/types/database';
 
 const kinds: EventKind[] = ['event', 'meeting', 'deadline'];
 
+function clockOnDay(day: string, hour: number): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), hour, 0, 0, 0);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export default function CreateEventScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const { groups, refresh } = useWorkspace();
-  const params = useLocalSearchParams<{ groupId?: string | string[] }>();
+  const params = useLocalSearchParams<{ groupId?: string | string[]; day?: string | string[] }>();
   const openedFrom = Array.isArray(params.groupId) ? params.groupId[0] ?? '' : params.groupId ?? '';
+  const openedDay = Array.isArray(params.day) ? params.day[0] ?? '' : params.day ?? '';
 
   const [groupId, setGroupId] = useState(openedFrom);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [startsAt, setStartsAt] = useState<Date | null>(null);
-  const [endsAt, setEndsAt] = useState<Date | null>(null);
+  const [startsAt, setStartsAt] = useState<Date | null>(clockOnDay(openedDay, 9));
+  const [endsAt, setEndsAt] = useState<Date | null>(clockOnDay(openedDay, 10));
   const [location, setLocation] = useState('');
   const [kind, setKind] = useState<EventKind>('event');
   const [agenda, setAgenda] = useState('');
