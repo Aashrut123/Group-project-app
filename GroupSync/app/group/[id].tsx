@@ -52,9 +52,24 @@ type TaskFilter = 'open' | 'done' | 'all';
 type ActivityItem = {
   id: string;
   actorId: string | null;
+  entityId: string | null;
+  action: string;
   summary: string;
   createdAt: string;
 };
+
+function latestChanges(items: ActivityItem[]) {
+  const seen = new Set<string>();
+  const kept: ActivityItem[] = [];
+  for (const item of items) {
+    const key = item.entityId || item.summary;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    kept.push(item);
+    if (kept.length >= 8) break;
+  }
+  return kept;
+}
 
 const SECTIONS: { id: ProjectSection; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -156,13 +171,15 @@ export default function GroupDetailScreen() {
     setTasks(loadedTasks);
     const activityResult = await supabase
       .from('activity')
-      .select('id, actor_id, summary, created_at')
+      .select('id, actor_id, entity_id, action, summary, created_at')
       .eq('group_id', id)
       .order('created_at', { ascending: false })
-      .limit(25);
-    setActivity(activityResult.error ? [] : (activityResult.data || []).map((row) => ({
+      .limit(40);
+    setActivity(activityResult.error ? [] : (activityResult.data as { id: number; actor_id: string | null; entity_id: string | null; action: string; summary: string; created_at: string }[] || []).map((row) => ({
       id: String(row.id),
       actorId: row.actor_id,
+      entityId: row.entity_id,
+      action: row.action,
       summary: row.summary,
       createdAt: row.created_at,
     })));
@@ -454,11 +471,6 @@ export default function GroupDetailScreen() {
 
   return (
     <Page>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 28 }}
-        refreshControl={refreshControl}
-      >
         {error ? <ErrorText>{error}</ErrorText> : null}
 
         <View style={styles.header}>
@@ -493,6 +505,12 @@ export default function GroupDetailScreen() {
             );
           })}
         </View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 28 }}
+        refreshControl={refreshControl}
+        style={{ flex: 1 }}
+      >
 
         {section === 'overview' ? (
         <>
@@ -850,27 +868,30 @@ export default function GroupDetailScreen() {
         {section === 'activity' ? (
           <>
             <Button title="Post a progress log" onPress={() => router.push({ pathname: '/progress', params: { groupId: id } })} />
-            {logs.length || activity.length ? (
-              [...logs.map((log) => ({
-                id: `log-${log.id}`,
-                who: log.profile?.display_name || 'Teammate',
-                when: formatDate(log.log_date),
-                text: [log.accomplishments, log.next_steps ? `Next: ${log.next_steps}` : '', log.blockers ? `Blocked: ${log.blockers}` : ''].filter(Boolean).join(' '),
-                at: log.created_at,
-              })), ...activity.map((item) => ({
-                id: `act-${item.id}`,
-                who: memberLabel(item.actorId),
-                when: formatDate(item.createdAt),
-                text: item.summary,
-                at: item.createdAt,
-              }))].sort((a, b) => b.at.localeCompare(a.at)).map((item) => (
-                <View key={item.id} style={styles.line}>
-                  <Text style={styles.itemTitle}>{item.who}</Text>
-                  <Text style={styles.metaLine}>{item.when}</Text>
-                  <Text style={styles.muted}>{item.text}</Text>
+            {logs.length ? (
+              <>
+                <Text style={styles.subhead}>Progress logs</Text>
+                {logs.slice(0, 5).map((log) => (
+                  <View key={log.id} style={styles.activityRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.itemTitle}>{log.profile?.display_name || 'Teammate'}</Text>
+                      <Text style={styles.muted} numberOfLines={2}>{log.accomplishments}</Text>
+                    </View>
+                    <Text style={styles.metaLine}>{formatDate(log.log_date)}</Text>
+                  </View>
+                ))}
+              </>
+            ) : null}
+            <Text style={styles.subhead}>Recent changes</Text>
+            {latestChanges(activity).length ? latestChanges(activity).map((item) => (
+              <View key={item.id} style={styles.activityRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.itemTitle} numberOfLines={1}>{item.summary.replace(/^(Task|Event|Meeting):\s*/i, '')}</Text>
+                  <Text style={styles.metaLine}>{memberLabel(item.actorId)} · {item.action === 'insert' ? 'Added' : item.action === 'delete' ? 'Removed' : 'Updated'}</Text>
                 </View>
-              ))
-            ) : <EmptyState compact title="No activity yet" body="Task changes and progress logs from this project show up here." />}
+                <Text style={styles.metaLine}>{formatDate(item.createdAt)}</Text>
+              </View>
+            )) : <EmptyState compact title="No recent changes" body="New tasks and meetings show up here once, not every time they are saved." />}
           </>
         ) : null}
       </ScrollView>
@@ -975,6 +996,7 @@ function createStyles(colors: AppColors) {
   tabLabelOn: { color: colors.text },
   subhead: { color: colors.text, fontSize: 16, fontWeight: '700', marginTop: 14, marginBottom: 6 },
   line: { paddingVertical: 8 },
+  activityRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   taskPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   groupHero: {
