@@ -22,7 +22,8 @@
           "color": "#1F6F64"
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

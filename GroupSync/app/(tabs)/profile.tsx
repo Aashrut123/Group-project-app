@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Image, Alert, Linking, ScrollView, Text } from 'react-native';
+import { Image, Alert, Linking, ScrollView, Text, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
@@ -19,6 +19,7 @@ import { phoneAlertsPreference, setPhoneAlerts, syncPhoneAlerts, type AlertPrefe
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/lib/theme';
 import * as ImagePicker from 'expo-image-picker';
+import AppearanceSheet from '@/components/AppearanceSheet';
 
 export default function ProfileScreen() {
   const { user, profile, loading, refreshProfile } = useAuth();
@@ -33,6 +34,7 @@ export default function ProfileScreen() {
   const [selectedImage, setSelectedImage] = useState<string | undefined>(
     undefined
   );
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
 
   useEffect(() => {
     void phoneAlertsPreference().then(setAlerts);
@@ -226,6 +228,7 @@ export default function ProfileScreen() {
 
           <Button title="Availability" onPress={() => router.push('/availability')} secondary />
           <Button title="Notices" onPress={() => router.push('/notifications')} secondary />
+          <Button title="Appearance & Accessibility" onPress={() => setAppearanceOpen(true)} secondary/>
 
           <Card style={{ marginTop: 16 }}>
             <Text style={styles.section}>Phone alerts</Text>
@@ -283,6 +286,14 @@ export default function ProfileScreen() {
           />
         </ScrollView>
       </Page>
+
+      <AppearanceSheet
+        visible={appearanceOpen}
+        onClose={() => setAppearanceOpen(false)}
+        onThemeChange={(selectedTheme) => {
+          console.log('Selected Theme is ', selectedTheme.name);
+        }}
+      />
     </SafeAreaView>
   );
 }
