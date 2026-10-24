@@ -1,6 +1,12 @@
+
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
-import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  Pressable,
+  type PressableProps,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Loading } from '@/components/ui';
@@ -12,7 +18,15 @@ import { usePrefersReducedMotion } from '@/lib/motion';
 import { radius } from '@/lib/theme';
 
 function TabButton({ style, ...props }: PressableProps) {
-  return <Pressable {...props} style={[style as StyleProp<ViewStyle>, { borderRadius: radius.md, overflow: 'hidden' }]} />;
+  return (
+    <Pressable
+      {...props}
+      style={[
+        style as StyleProp<ViewStyle>,
+        { borderRadius: radius.md, overflow: 'hidden' },
+      ]}
+    />
+  );
 }
 
 const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -29,24 +43,35 @@ export default function TabLayout() {
   const { tasks, events } = useWorkspace();
   const insets = useSafeAreaInsets();
   const reduceMotion = usePrefersReducedMotion();
+
   usePhoneAlerts(Boolean(user), tasks, events);
 
   if (loading) return <Loading />;
   if (!user) return <Redirect href="/auth" />;
-  if (profile?.onboarding_completed === false) return <Redirect href="/onboarding" />;
+  if (profile?.onboarding_completed === false) {
+    return <Redirect href="/onboarding" />;
+  }
 
   return (
     <Tabs
       screenOptions={({ route }) => ({
         headerShown: false,
         animation: reduceMotion ? 'none' : 'fade',
-        transitionSpec: reduceMotion ? undefined : { animation: 'timing', config: { duration: 200 } },
+        transitionSpec: reduceMotion
+          ? undefined
+          : { animation: 'timing', config: { duration: 200 } },
+
+        sceneStyle: {
+          backgroundColor: colors.background,
+        },
+
         tabBarPosition: 'bottom',
         tabBarLabelPosition: 'below-icon',
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
         tabBarActiveBackgroundColor: 'transparent',
         tabBarInactiveBackgroundColor: 'transparent',
+
         tabBarStyle: {
           height: 58 + insets.bottom,
           paddingTop: 6,
@@ -55,12 +80,25 @@ export default function TabLayout() {
           borderTopWidth: 1,
           backgroundColor: colors.surface,
         },
-        tabBarItemStyle: { borderRadius: radius.md, marginHorizontal: 2 },
+
+        tabBarItemStyle: {
+          borderRadius: radius.md,
+          marginHorizontal: 2,
+        },
         tabBarButton: (props) => <TabButton {...props} />,
-        tabBarLabelStyle: { fontWeight: '600', fontSize: 11, marginTop: 2 },
+        tabBarLabelStyle: {
+          fontWeight: '600',
+          fontSize: 11,
+          marginTop: 2,
+        },
+
         tabBarIcon: ({ color, focused }) => (
           <Ionicons
-            name={focused ? icons[route.name] : `${icons[route.name]}-outline` as keyof typeof Ionicons.glyphMap}
+            name={
+              focused
+                ? icons[route.name]
+                : `${icons[route.name]}-outline` as keyof typeof Ionicons.glyphMap
+            }
             size={22}
             color={color}
           />
