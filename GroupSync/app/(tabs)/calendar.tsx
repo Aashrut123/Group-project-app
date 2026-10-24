@@ -404,7 +404,7 @@ function ItemRow({ item, timeZone, todayStamp, pending, onToggle }: { item: Cale
     else if (item.href.startsWith('/group/')) router.push(`/group/${item.href.slice(7)}`);
   };
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`${kindLabel(item.kind)}. ${item.title}`} onPress={open} style={({ pressed }) => [{ flexDirection: 'row', gap: 10, alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border }, pressed && { opacity: 0.7 }]}>
+    <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border }}>
       {item.taskId && item.taskStatus ? (
         <Pressable accessibilityRole="button" accessibilityLabel={item.taskStatus === 'completed' ? 'Mark not finished' : 'Mark finished'} disabled={pending} onPress={() => void onToggle(item.taskId || '', item.taskStatus || 'todo')} hitSlop={6} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name={item.taskStatus === 'completed' ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={colors.primary} />
@@ -412,17 +412,19 @@ function ItemRow({ item, timeZone, todayStamp, pending, onToggle }: { item: Cale
       ) : (
         <Ionicons name={kindIcon(item.kind)} size={18} color={colors.primary} />
       )}
-      <View style={{ width: 58 }}>
-        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>{item.allDay ? 'All day' : formatTime(item.start)}</Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: overdue ? colors.danger : colors.text, fontSize: 15, fontWeight: '700' }} numberOfLines={2}>{item.title}</Text>
-        <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
-          {kindLabel(item.kind)} · {item.project}{item.who ? ` · ${item.who}` : ''}{item.location ? ` · ${item.location}` : ''}{overdue ? ' · Overdue' : ''}
-        </Text>
-      </View>
-      <Pill tone={item.kind === 'meeting' ? 'active' : item.kind === 'deadline' || item.kind === 'milestone' || overdue ? 'medium' : 'neutral'}>{kindLabel(item.kind)}</Pill>
-    </Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${kindLabel(item.kind)}. ${item.title}`} onPress={open} style={({ pressed }) => [{ flex: 1, flexDirection: 'row', gap: 10, alignItems: 'center' }, pressed && { opacity: 0.7 }]}>
+        <View style={{ width: 58 }}>
+          <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>{item.allDay ? 'All day' : formatTime(item.start)}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: overdue ? colors.danger : colors.text, fontSize: 15, fontWeight: '700' }} numberOfLines={2}>{item.title}</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
+            {kindLabel(item.kind)} · {item.project}{item.who ? ` · ${item.who}` : ''}{item.location ? ` · ${item.location}` : ''}{overdue ? ' · Overdue' : ''}
+          </Text>
+        </View>
+        <Pill tone={item.kind === 'meeting' ? 'active' : item.kind === 'deadline' || item.kind === 'milestone' || overdue ? 'medium' : 'neutral'}>{kindLabel(item.kind)}</Pill>
+      </Pressable>
+    </View>
   );
 }
 
