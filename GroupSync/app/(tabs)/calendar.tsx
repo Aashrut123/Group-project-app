@@ -4,7 +4,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, Chip, EmptyState, ErrorText, Loading, Page, Pill, Segmented } from '@/components/ui';
+import { Button, EmptyState, ErrorText, Loading, Page, Pill, Segmented } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useTheme } from '@/features/theme/ThemeProvider';
 import { usePullRefresh } from '@/hooks/usePullRefresh';
@@ -18,7 +18,6 @@ import type { AppColors } from '@/lib/theme';
 import type { CalendarEvent, Task, UnavailablePeriod } from '@/types/database';
 
 type ViewName = 'agenda' | 'week' | 'month';
-type KindFilter = 'all' | 'meeting' | 'task' | 'deadline';
 type ItemKind = 'meeting' | 'event' | 'deadline' | 'task' | 'milestone' | 'unavailable';
 
 type CalendarItem = {
@@ -118,8 +117,6 @@ export default function CalendarScreen() {
   const [milestones, setMilestones] = useState<MilestoneRow[]>([]);
   const [view, setView] = useState<ViewName>('agenda');
   const [selectedDay, setSelectedDay] = useState(new Date());
-  const [projectId, setProjectId] = useState<string | null>(null);
-  const [kindFilter, setKindFilter] = useState<KindFilter>('all');
   const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
   const groupKey = groups.map((group) => group.id).join(',');
 
@@ -142,16 +139,6 @@ export default function CalendarScreen() {
   }, [groupKey, groups]);
 
   const items = useMemo(() => buildItems(events, tasks, groups.length ? milestones : [], unavailable, user?.id, groups), [events, tasks, milestones, unavailable, user?.id, groups]);
-  const filtered = useMemo(() => items.filter((item) => {
-    if (projectId) {
-      const group = groups.find((entry) => entry.id === projectId);
-      if (item.kind === 'unavailable' || !group || item.project !== group.name) return false;
-    }
-    if (kindFilter === 'meeting') return item.kind === 'meeting';
-    if (kindFilter === 'task') return item.kind === 'task';
-    if (kindFilter === 'deadline') return item.kind === 'deadline' || item.kind === 'milestone';
-    return true;
-  }), [items, projectId, kindFilter, groups]);
 
   const today = new Date();
   const todayStamp = dayStamp(today);
@@ -163,7 +150,7 @@ export default function CalendarScreen() {
     kind: event.kind === 'deadline' ? 'deadline' as const : event.kind === 'meeting' ? 'meeting' as const : 'event' as const,
   }))), [events]);
 
-  const hasOn = useCallback((day: Date) => filtered.some((item) => onDay(item, day, timeZone)), [filtered, timeZone]);
+  const hasOn = useCallback((day: Date) => items.some((item) => onDay(item, day, timeZone)), [items, timeZone]);
 
   const shift = (direction: number) => {
     const next = new Date(selectedDay);
@@ -207,35 +194,17 @@ export default function CalendarScreen() {
               onSelect={setSelectedDay}
               onShift={shift}
             />
-          ) : (
-            <DateStrip
-              selected={selectedDay}
-              count={view === 'week' ? 7 : 14}
-              start={view === 'week' ? addDays(selectedDay, -selectedDay.getDay()) : addDays(selectedDay, -1)}
-              hasOn={hasOn}
-              onSelect={setSelectedDay}
-              onShift={shift}
-            />
-          )}
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-            <Chip label="All projects" active={projectId === null} onPress={() => setProjectId(null)} />
-            {groups.filter((group) => group.status !== 'archived').map((group) => (
-              <Chip key={group.id} label={group.name} active={projectId === group.id} onPress={() => setProjectId(group.id)} />
-            ))}
-          </ScrollView>
-          <View style={styles.filters}>
-            {(['all', 'meeting', 'task', 'deadline'] as const).map((value) => (
-              <Chip key={value} label={value === 'all' ? 'All types' : value === 'meeting' ? 'Meetings' : value === 'task' ? 'Tasks' : 'Deadlines'} active={kindFilter === value} onPress={() => setKindFilter(value)} />
-            ))}
-          </View>
+          ) : null}
+          {view === 'week' ? (
+            <WeekStrip selected={selectedDay} hasOn={hasOn} onSelect={setSelectedDay} onShift={shift} />
+          ) : null}
 
           <AgendaList
             view={view}
             selected={selectedDay}
             todayStamp={todayStamp}
             timeZone={timeZone}
-            items={filtered}
+            items={items}
             pendingTaskId={pendingTaskId}
             onToggle={async (taskId, status) => {
               if (pendingTaskId) return;
@@ -267,6 +236,7 @@ function buildItems(
   const projectName = (id: string | null | undefined) => groups.find((group) => group.id === id)?.name || '';
   const rows: CalendarItem[] = [];
   for (const event of events) {
+    if ((event.kind === 'meeting' || event.kind === 'event') && !isStillScheduled(event.ends_at)) continue;
     rows.push({
       key: `event-${event.id}`,
       title: event.title,
@@ -456,41 +426,41 @@ function ItemRow({ item, timeZone, todayStamp, pending, onToggle }: { item: Cale
   );
 }
 
-function DateStrip({
+function WeekStrip({
   selected,
-  count,
-  start,
   hasOn,
   onSelect,
   onShift,
 }: {
   selected: Date;
-  count: number;
-  start: Date;
   hasOn: (day: Date) => boolean;
   onSelect: (day: Date) => void;
   onShift: (direction: number) => void;
 }) {
   const { colors } = useTheme();
   const today = new Date();
-  const days = Array.from({ length: count }, (_, index) => addDays(start, index));
+  const start = addDays(selected, -selected.getDay());
+  const days = Array.from({ length: 7 }, (_, index) => addDays(start, index));
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 }}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Previous" onPress={() => onShift(-1)} style={{ width: 32, height: 44, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: colors.text, fontSize: 22 }}>‹</Text></Pressable>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+    <View style={{ backgroundColor: colors.forestFill, borderRadius: 18, padding: 12, marginBottom: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Previous week" onPress={() => onShift(-1)} hitSlop={8}><Text style={{ color: colors.onForest, fontSize: 24, paddingHorizontal: 8 }}>‹</Text></Pressable>
+        <Text style={{ color: colors.onForest, fontSize: 16, fontWeight: '700' }}>{selected.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="Next week" onPress={() => onShift(1)} hitSlop={8}><Text style={{ color: colors.onForest, fontSize: 24, paddingHorizontal: 8 }}>›</Text></Pressable>
+      </View>
+      <View style={{ flexDirection: 'row' }}>
         {days.map((day) => {
           const chosen = sameDay(day, selected);
           const isToday = sameDay(day, today);
           return (
-            <Pressable key={dayStamp(day)} accessibilityRole="button" accessibilityState={{ selected: chosen }} onPress={() => onSelect(day)} style={{ width: 46, minHeight: 58, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: chosen ? colors.primary : colors.surface, borderWidth: 1, borderColor: isToday && !chosen ? colors.primary : colors.border }}>
-              <Text style={{ color: chosen ? colors.primaryForeground : colors.textSecondary, fontSize: 11, fontWeight: '700' }}>{day.toLocaleDateString(undefined, { weekday: 'narrow' })}</Text>
-              <Text style={{ color: chosen ? colors.primaryForeground : colors.text, fontSize: 16, fontWeight: '700' }}>{day.getDate()}</Text>
-              <View style={{ width: 5, height: 5, borderRadius: 3, marginTop: 3, backgroundColor: hasOn(day) ? (chosen ? colors.primaryForeground : colors.primary) : 'transparent' }} />
+            <Pressable key={dayStamp(day)} accessibilityRole="button" accessibilityState={{ selected: chosen }} onPress={() => onSelect(day)} style={{ flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 12, backgroundColor: chosen ? colors.accent : 'transparent', borderWidth: isToday && !chosen ? 1 : 0, borderColor: colors.accent }}>
+              <Text style={{ color: chosen ? colors.onAccent : colors.onForest, fontSize: 13, fontWeight: '600' }}>{day.toLocaleDateString(undefined, { weekday: 'narrow' })}</Text>
+              <Text style={{ color: chosen ? colors.onAccent : colors.onForest, fontSize: 13, fontWeight: '600' }}>{day.getDate()}</Text>
+              <View style={{ width: 5, height: 5, borderRadius: 3, marginTop: 4, backgroundColor: hasOn(day) ? (chosen ? colors.onAccent : colors.accent) : 'transparent' }} />
             </Pressable>
           );
         })}
-      </ScrollView>
-      <Pressable accessibilityRole="button" accessibilityLabel="Next" onPress={() => onShift(1)} style={{ width: 32, height: 44, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: colors.text, fontSize: 22 }}>›</Text></Pressable>
+      </View>
     </View>
   );
 }
@@ -550,6 +520,5 @@ function createStyles(colors: AppColors) {
     range: { color: colors.textSecondary, fontSize: 14, marginTop: 2 },
     add: { marginTop: 0, minHeight: 40, paddingHorizontal: 16 },
     conflict: { color: colors.warning, fontSize: 13, lineHeight: 18, marginBottom: 8 },
-    filters: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 8, marginBottom: 8 },
   } as const;
 }
