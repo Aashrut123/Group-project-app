@@ -436,6 +436,7 @@ export function ProgressBar({ value, label, color }: { value: number; label?: st
   );
 }
 
+<<<<<<< HEAD
 export function AiBanner({ title, body }: { title: string; body: string }) {
   const { colors, radius } = useTheme();
   return (
@@ -448,3 +449,305 @@ export function AiBanner({ title, body }: { title: string; body: string }) {
     </View>
   );
 }
+=======
+const styles = {
+  page: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+
+  titleWrap: {
+    marginBottom: 18,
+  },
+
+  title: {
+    color: theme.colors.ink,
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+
+  subtitle: {
+    color: theme.colors.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 4,
+  },
+
+  card: {
+    backgroundColor: theme.colors.surface,
+    padding: 16,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    marginBottom: 12,
+  },
+
+  button: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    marginTop: 8,
+  },
+
+  buttonPressed: {
+    backgroundColor: theme.colors.primaryDark,
+  },
+
+  buttonSecondary: {
+    backgroundColor: theme.colors.mint,
+  },
+
+  buttonSecondaryPressed: {
+    backgroundColor: '#D5EBE6',
+  },
+
+  buttonLight: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+  },
+
+  buttonText: {
+    color: theme.colors.onPrimary,
+    fontWeight: '700',
+    fontSize: 15,
+  },
+
+  buttonSecondaryText: {
+    color: theme.colors.primaryDark,
+  },
+
+  buttonLightText: {
+    color: theme.colors.primaryDark,
+  },
+
+  disabled: {
+    opacity: 0.55,
+  },
+
+  textButton: {
+    marginTop: 4,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 4,
+  },
+
+  textButtonPressed: {
+    opacity: 0.6,
+  },
+
+  textButtonLabel: {
+    color: theme.colors.primary,
+    fontWeight: '700',
+    fontSize: 15,
+  },
+
+  field: {
+    marginBottom: 12,
+  },
+
+  label: {
+    color: theme.colors.muted,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+
+  input: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.line,
+    borderWidth: 1,
+    borderRadius: 11,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+    color: theme.colors.ink,
+    fontSize: 15,
+  },
+
+  inputFocused: {
+    borderColor: theme.colors.primary,
+  },
+
+  empty: {
+    alignItems: 'center',
+    paddingVertical: 28,
+    marginTop: 8,
+  },
+
+  emptyMark: {
+    width: 28,
+    height: 4,
+    borderRadius: 4,
+    backgroundColor: theme.colors.primary,
+  },
+
+  section: {
+    color: theme.colors.ink,
+    fontSize: theme.type.section,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+
+  meta: {
+    color: theme.colors.muted,
+    fontSize: theme.type.caption,
+    lineHeight: 18,
+  },
+
+  progressWrap: {
+    marginTop: 8,
+    gap: 6,
+  },
+
+  track: {
+    height: 6,
+    borderRadius: 6,
+    backgroundColor: theme.colors.line,
+    overflow: 'hidden',
+  },
+
+  fill: {
+    height: 6,
+    borderRadius: 6,
+    backgroundColor: theme.colors.primary,
+  },
+
+  emptyTitle: {
+    color: theme.colors.ink,
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 8,
+  },
+
+  emptyBody: {
+    color: theme.colors.muted,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginTop: 5,
+    maxWidth: 270,
+  },
+
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: theme.colors.background,
+  },
+
+  error: {
+    color: theme.colors.red,
+    fontSize: 14,
+    marginVertical: 8,
+  },
+
+  pill: {
+    alignSelf: 'flex-start',
+    borderRadius: 30,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+
+  pillText: {
+    color: theme.colors.primaryDark,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
+  chip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 40,
+    justifyContent: 'center',
+  },
+
+  chipPressed: {
+    backgroundColor: theme.colors.mint,
+    borderColor: theme.colors.primary,
+  },
+
+  chipActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+
+  selectCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    borderRadius: theme.radius.md,
+    padding: 14,
+    marginBottom: 10,
+  },
+
+  selectCardOn: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.mint,
+  },
+
+  selectCardPressed: {
+    borderColor: theme.colors.primaryDark,
+  },
+
+  selectMark: {
+    paddingTop: 2,
+  },
+
+  radio: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: theme.colors.faint,
+    backgroundColor: theme.colors.surface,
+  },
+
+  radioOn: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary,
+  },
+
+  selectTitle: {
+    color: theme.colors.ink,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  selectDetail: {
+    color: theme.colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+
+  chipText: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  chipTextActive: {
+    color: theme.colors.onPrimary,
+  },
+} as const;
+>>>>>>> c260418 (tried fixing some themes)
