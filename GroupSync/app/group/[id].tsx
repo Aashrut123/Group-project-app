@@ -256,7 +256,6 @@ export default function GroupDetailScreen() {
   const openTasks = projectTasks.filter((task) => task.status !== 'completed');
   const now = new Date();
   const overdueTasks = openTasks.filter((task) => task.due_at && new Date(task.due_at) < now);
-  const nextTask = [...openTasks].sort((a, b) => (a.due_at || '9999').localeCompare(b.due_at || '9999'))[0];
   const visibleTasks = projectTasks.filter((task) => (
     taskFilter === 'all' ? true : taskFilter === 'done' ? task.status === 'completed' : task.status !== 'completed'
   ));
@@ -506,15 +505,6 @@ export default function GroupDetailScreen() {
           <Text style={styles.metaLine}>No tasks yet, so there is no completion percent.</Text>
         ) : (
           <ProgressBar value={progress} color={group?.color || colors.primary} label={`${progress}% of ${projectTasks.length} tasks finished · ${openTasks.length} still open${overdueTasks.length ? ` · ${overdueTasks.length} overdue` : ''}`} />
-        )}
-        <Text style={styles.subhead}>Next</Text>
-        {nextTask ? (
-          <Pressable accessibilityRole="button" onPress={() => router.push(`/task/${nextTask.id}`)} style={styles.line}>
-            <Text style={styles.itemTitle}>{nextTask.title}</Text>
-            <Text style={styles.metaLine}>{nextTask.due_at ? formatDate(nextTask.due_at) : 'No due date'} · {assigneeLabel(nextTask)}</Text>
-          </Pressable>
-        ) : (
-          <Text style={styles.metaLine}>Nothing is waiting. Add a task when the next step is clear.</Text>
         )}
         <View style={styles.section}>
           <Text style={styles.heading}>People <Text style={styles.count}>{members.length}</Text></Text>
@@ -975,7 +965,6 @@ function createStyles(colors: AppColors) {
   tabLabel: { color: colors.textSecondary, fontSize: 11, fontWeight: '700' },
   tabLabelOn: { color: colors.text },
   subhead: { color: colors.text, fontSize: 16, fontWeight: '700', marginTop: 14, marginBottom: 6 },
-  line: { paddingVertical: 8 },
   activityRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   taskPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
