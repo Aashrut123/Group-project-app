@@ -128,7 +128,7 @@ export default function AuthCallbackScreen() {
         </Text>
 
         <Text style={styles.body}>
-          Choose a new password for your GroupSync account.
+          Choose a new password for your Syncro account.
         </Text>
 
         {ready ? (

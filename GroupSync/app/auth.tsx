@@ -143,7 +143,7 @@ export default function AuthScreen() {
               <Text style={styles.markText}>G</Text>
             </View>
 
-            <Text style={styles.brandName}>GroupSync</Text>
+            <Text style={styles.brandName}>Syncro</Text>
           </View>
 
           <Title subtitle="Bring deadlines, meetings, and teammates together in one calm workspace.">

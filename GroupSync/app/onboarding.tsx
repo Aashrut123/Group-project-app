@@ -213,7 +213,7 @@ export default function OnboardingScreen() {
           {step === 0 && !editing ? (
             <>
               <View style={styles.hero}>
-                <Text style={[styles.kicker, { color: colors.accent }]}>GroupSync</Text>
+                <Text style={[styles.kicker, { color: colors.accent }]}>Syncro</Text>
                 <Text style={styles.heroTitle}>Team work, with a clear next step.</Text>
                 <Text style={styles.heroBody}>Plan a project with other people, keep deadlines in one calendar, and see what each person finished.</Text>
               </View>
@@ -242,7 +242,7 @@ export default function OnboardingScreen() {
                   </View>
                 ))}
               </View>
-              <Text style={styles.note}>AI-assisted planning is part of the plan for GroupSync. It is not available yet.</Text>
+              <Text style={styles.note}>AI-assisted planning is part of the plan for Syncro. It is not available yet.</Text>
               <Button title="Get started" onPress={() => goTo(1)} />
               {user ? null : <Button title="Sign in" onPress={() => router.replace('/auth')} secondary />}
             </>
@@ -287,7 +287,7 @@ export default function OnboardingScreen() {
               <Text style={styles.body}>Pick one path. You can create a project, join a team, or look around with no project at all.</Text>
               <SelectCard title="Create a project" detail="Set up a workspace and add tasks when you are ready. Teammates can join later." selected={path === 'start'} onPress={() => { setPath('start'); setError(''); }} />
               <SelectCard title="Join a team" detail="Use an invitation code from a project that already exists." selected={path === 'join'} onPress={() => { setPath('join'); setError(''); }} />
-              <SelectCard title="Explore first" detail="Open GroupSync now. Nothing is created until you choose to." selected={path === 'explore'} onPress={() => { setPath('explore'); setError(''); }} />
+              <SelectCard title="Explore first" detail="Open Syncro now. Nothing is created until you choose to." selected={path === 'explore'} onPress={() => { setPath('explore'); setError(''); }} />
               <View style={styles.explain}>
                 <Text style={styles.featureTitle}>Goal, tasks, milestones</Text>
                 <Text style={styles.note}>A goal is the outcome. Tasks are the work. Milestones are optional checkpoints you add inside a project, not during setup.</Text>
@@ -298,7 +298,7 @@ export default function OnboardingScreen() {
               {error ? <ErrorText>{error}</ErrorText> : null}
               {path === 'start' ? <Button title="Create a project" onPress={() => void openApp('start')} busy={busy} /> : null}
               {path === 'join' ? <Button title="Join project" onPress={() => void joinTeam()} busy={busy} /> : null}
-              {path === 'explore' ? <Button title="Open GroupSync" onPress={() => void openApp('explore')} busy={busy} /> : null}
+              {path === 'explore' ? <Button title="Open Syncro" onPress={() => void openApp('explore')} busy={busy} /> : null}
               {path === 'join' ? <Button title="Explore instead" onPress={() => void openApp('explore')} secondary /> : null}
               <TextButton title="Back" onPress={() => goTo(1)} />
             </>

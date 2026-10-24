@@ -1,6 +1,6 @@
-# GroupSync
+# Syncro
 
-GroupSync is an Expo and React Native app for student teams to share calendars, coordinate project tasks, and manage group membership. It uses TypeScript, Expo Router, Supabase Auth, PostgreSQL Row Level Security, and Supabase Realtime.
+Syncro is an Expo and React Native app for student teams to share calendars, coordinate project tasks, and manage group membership. It uses TypeScript, Expo Router, Supabase Auth, PostgreSQL Row Level Security, and Supabase Realtime.
 
 ## What is included
 

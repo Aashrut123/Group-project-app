@@ -207,7 +207,7 @@ export default function ProfileScreen() {
             </Pressable>
 
             <Text style={styles.email}>{user?.email}</Text>
-            <Text style={styles.member}>GroupSync member</Text>
+            <Text style={styles.member}>Syncro member</Text>
           </Card>
 
           <Field
@@ -297,11 +297,11 @@ export default function ProfileScreen() {
                 <Button title="Open phone settings" onPress={() => void Linking.openSettings()} secondary />
               </>
             ) : null}
-            {alerts === 'on' ? <Text style={styles.about}>Phone alerts are on for the tasks and meetings already in GroupSync.</Text> : null}
+            {alerts === 'on' ? <Text style={styles.about}>Phone alerts are on for the tasks and meetings already in Syncro.</Text> : null}
           </Card>
 
           <Card style={{ marginTop: 20 }}>
-            <Text style={styles.section}>About GroupSync</Text>
+            <Text style={styles.section}>About Syncro</Text>
             <Text style={styles.about}>
               A shared home for student teams to plan meetings, track project
               tasks, and keep every deadline in view.

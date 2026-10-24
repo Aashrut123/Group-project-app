@@ -58,7 +58,7 @@ export default function AppearanceSheet({
           <View style={styles.header}>
             <View style={styles.headerText}>
               <Text style={[styles.title, { color: palette.text }]}>
-                Personalize Your GroupSync App!
+                Personalize Your Syncro App!
               </Text>
 
               <Text style={[styles.subtitle, { color: palette.muted }]}>

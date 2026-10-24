@@ -20,7 +20,7 @@ export function isTimeZone(value: string): boolean {
   }
 }
 
-/** GroupSync uses Central time unless a profile has chosen another zone. */
+/** Syncro uses Central time unless a profile has chosen another zone. */
 export const DEFAULT_TIME_ZONE = 'America/Chicago';
 
 export function deviceTimeZone(): string {
