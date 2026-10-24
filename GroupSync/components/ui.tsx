@@ -170,8 +170,8 @@ export function Button({
 
   const pressedBackground = onForest
     ? secondary
-      ? 'rgba(184,229,200,0.16)'
-      : '#A4D9B8'
+      ? colors.border
+      : colors.primaryPressed
     : secondary
       ? colors.accent
       : light

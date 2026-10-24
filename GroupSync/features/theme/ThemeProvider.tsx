@@ -2,7 +2,8 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { darkColors, lightColors, radius, space, type, type AppColors } from '@/lib/theme';
+import { useOptionalAppearance } from '@/lib/AppearanceProvider';
+import { colorsFromPalette, darkColors, isDarkColor, lightColors, radius, space, type, type AppColors } from '@/lib/theme';
 
 export type ColorSchemePreference = 'system' | 'light' | 'dark';
 
@@ -52,15 +53,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useTheme(): ThemeValue {
+  const appearance = useOptionalAppearance();
   const value = useContext(ThemeContext);
-  if (value) return value;
-  return {
+  const base = value ?? {
     colors: lightColors,
-    scheme: 'light',
-    preference: 'system',
+    scheme: 'light' as const,
+    preference: 'system' as const,
     setPreference: () => undefined,
     space,
     radius,
     type,
+  };
+  if (!appearance) return base;
+  return {
+    ...base,
+    colors: colorsFromPalette(appearance.palette),
+    scheme: isDarkColor(appearance.palette.background) ? 'dark' : 'light',
   };
 }

@@ -212,8 +212,12 @@ export function AppearanceProvider({
   );
 }
 
+export function useOptionalAppearance() {
+  return useContext(AppearanceContext);
+}
+
 export function useAppearance() {
-  const context = useContext(AppearanceContext);
+  const context = useOptionalAppearance();
 
   if (!context) {
     throw new Error(

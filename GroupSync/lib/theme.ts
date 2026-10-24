@@ -128,3 +128,60 @@ export const theme = {
   radius,
   type,
 };
+
+type AppearancePalette = {
+  background: string;
+  card: string;
+  text: string;
+  muted: string;
+  accent: string;
+  accentText: string;
+  border: string;
+};
+
+export function isDarkColor(hex: string): boolean {
+  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!match) return false;
+  const value = Number.parseInt(match[1], 16);
+  const red = (value >> 16) & 255;
+  const green = (value >> 8) & 255;
+  const blue = value & 255;
+  return red * 0.299 + green * 0.587 + blue * 0.114 < 150;
+}
+
+/** Map the chosen appearance palette onto the colors the screens already use. */
+export function colorsFromPalette(palette: AppearancePalette): AppColors {
+  const dark = isDarkColor(palette.background);
+  const base = dark ? darkColors : lightColors;
+  return {
+    ...base,
+    background: palette.background,
+    surface: palette.card,
+    elevated: palette.card,
+    mutedSurface: dark ? palette.background : palette.border,
+    text: palette.text,
+    textSecondary: palette.muted,
+    textTertiary: palette.muted,
+    border: palette.border,
+    primary: palette.accent,
+    primaryPressed: palette.accent,
+    primaryForeground: palette.accentText,
+    accent: palette.accent,
+    onAccent: palette.accentText,
+    mint: dark ? palette.card : palette.border,
+    onMint: palette.text,
+    forest: palette.text,
+    forestFill: palette.card,
+    onForest: palette.text,
+    onForestMuted: palette.muted,
+    success: palette.accent,
+    disabled: palette.border,
+    ink: palette.text,
+    muted: palette.muted,
+    faint: palette.muted,
+    line: palette.border,
+    primaryDark: palette.text,
+    onPrimary: palette.accentText,
+    onPrimaryMuted: palette.muted,
+  };
+}
